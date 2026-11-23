@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -2878,168 +2878,54 @@ const ensureLibraries = (kind) => {
   }
 };
 
-const exportPDF = () => {
+const REPORT_BRAND = 'Warung Kopi Fauget';
+
+const loadLogoDataUrl = async () => {
+  try {
+    const response = await fetch('./icons/logo-badge.png');
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    return null;
+  }
+};
+
+const exportPDF = async () => {
   const data = getLogData();
   if (!data.trx.length && !data.expenses.length) {
     toast('Tidak ada data pada periode ini', 'error');
     return;
   }
   if (!ensureLibraries('pdf')) return;
+  if (!window.WarkopPDF || typeof window.WarkopPDF.build !== 'function') {
+    toast('Modul laporan belum termuat. Muat ulang aplikasi lalu coba lagi.', 'error');
+    return;
+  }
 
   try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 12;
-    const bottomLimit = pageHeight - 18;
-    let y = 34;
-
-    doc.setProperties({
-      title: 'Logbook Warkop',
-      subject: `Laporan ${state.logFrom} sampai ${state.logTo}`,
-      creator: 'Warkop POS'
-    });
-
-    doc.setFillColor(43, 30, 21);
-    doc.rect(0, 0, pageWidth, 27, 'F');
-    doc.setTextColor(246, 238, 229);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('Logbook Warkop', margin, 11.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(214, 195, 173);
-    doc.text(`Periode: ${formatShortDate(state.logFrom)} sampai ${formatShortDate(state.logTo)}`, margin, 18.5);
-    doc.text(`Tanggal cetak: ${formatPrintDate(new Date())}`, pageWidth - margin, 18.5, { align: 'right' });
-
-    const tableBase = {
-      theme: 'grid',
-      margin: { left: margin, right: margin, bottom: 16 },
-      styles: {
-        font: 'helvetica',
-        fontSize: 8,
-        cellPadding: 2.3,
-        textColor: [45, 32, 22],
-        lineColor: [224, 214, 203],
-        lineWidth: 0.1,
-        overflow: 'linebreak'
-      },
-      headStyles: {
-        fillColor: [201, 121, 58],
-        textColor: [255, 248, 239],
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [250, 246, 241]
-      },
-      footStyles: {
-        fillColor: [241, 232, 222],
-        textColor: [45, 32, 22],
-        fontStyle: 'bold'
-      }
-    };
-
-    const addTable = (title, options) => {
-      if (y + 22 > bottomLimit) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(58, 39, 25);
-      doc.text(title, margin, y);
-      doc.autoTable({
-        ...tableBase,
-        ...options,
-        startY: y + 3
-      });
-      y = (doc.lastAutoTable?.finalY || y) + 10;
-    };
-
-    addTable('Ringkasan', {
-      head: [['Keterangan', 'Nilai', 'Keterangan', 'Nilai']],
-      body: [
-        ['Omzet', rp(data.summary.omzet), 'Jumlah transaksi', String(data.summary.count)],
-        ['Tunai', rp(data.summary.tunai), 'QRIS', rp(data.summary.qris)],
-        ['Modal (HPP)', rp(data.summary.modal), 'Laba kotor', signedRp(data.summary.labaKotor)],
-        ['Pengeluaran', rp(data.summary.pengeluaran), 'Laba bersih', signedRp(data.summary.laba)]
-      ]
-    });
-
-    addTable('Rekap per hari', {
-      head: [['Tanggal', 'Jumlah Trx', 'Omzet', 'Tunai', 'QRIS', 'Modal', 'Pengeluaran', 'Laba']],
-      body: data.days.map((day) => [
-        formatShortDate(day.day),
-        String(day.trxCount),
-        rp(day.omzet),
-        rp(day.tunai),
-        rp(day.qris),
-        rp(day.modal),
-        rp(day.pengeluaran),
-        signedRp(day.laba)
-      ]),
-      foot: [[
-        'Total',
-        String(data.summary.count),
-        rp(data.summary.omzet),
-        rp(data.summary.tunai),
-        rp(data.summary.qris),
-        rp(data.summary.modal),
-        rp(data.summary.pengeluaran),
-        signedRp(data.summary.laba)
-      ]]
-    });
-
-    addTable('Detail transaksi', {
-      head: [['Tanggal', 'Jam', 'Item', 'Bayar', 'Total', 'Modal']],
-      body: data.trx.length
-        ? data.trx.map((trx) => [
-          formatShortDate(trx.day),
-          formatTime(trx.created_at),
-          trx.items.map((item) => `${item.name} x${item.qty}`).join(', '),
-          trx.pay === 'tunai' ? 'Tunai' : 'QRIS',
-          rp(trx.total),
-          rp(trxCost(trx))
-        ])
-        : [[{ content: 'Tidak ada transaksi pada periode ini.', colSpan: 6 }]],
-      columnStyles: {
-        2: { cellWidth: 100 },
-        4: { halign: 'right' },
-        5: { halign: 'right' }
+    const logo = await loadLogoDataUrl();
+    const doc = window.WarkopPDF.build({
+      jsPDF: window.jspdf.jsPDF,
+      brand: REPORT_BRAND,
+      logo,
+      printedAt: formatPrintDate(new Date()),
+      fmt: { rp, signedRp, shortDate: formatShortDate, time: formatTime },
+      data: {
+        from: state.logFrom,
+        to: state.logTo,
+        summary: data.summary,
+        days: data.days,
+        trx: data.trx,
+        expenses: data.expenses
       }
     });
-
-    addTable('Pengeluaran', {
-      head: [['Tanggal', 'Kategori', 'Catatan', 'Nominal']],
-      body: data.expenses.length
-        ? data.expenses.map((expense) => [
-          formatShortDate(expense.date),
-          expense.category,
-          expense.note || '-',
-          rp(expense.amount)
-        ])
-        : [[{ content: 'Tidak ada pengeluaran pada periode ini.', colSpan: 4 }]],
-      foot: data.expenses.length
-        ? [['Total', '', '', rp(data.summary.pengeluaran)]]
-        : undefined,
-      columnStyles: {
-        2: { cellWidth: 120 },
-        3: { halign: 'right' }
-      }
-    });
-
-    const pageCount = doc.getNumberOfPages();
-    for (let page = 1; page <= pageCount; page += 1) {
-      doc.setPage(page);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(120, 106, 94);
-      doc.text('Warkop POS', margin, pageHeight - 7);
-      doc.text(`Halaman ${page} dari ${pageCount}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
-    }
-
-    doc.save(`logbook_${state.logFrom}_${state.logTo}.pdf`);
+    doc.save(`laporan_warkop_${state.logFrom}_${state.logTo}.pdf`);
     toast('Berkas PDF sedang diunduh.');
   } catch (error) {
     toast('Gagal membuat PDF. Coba muat ulang aplikasi.', 'error');

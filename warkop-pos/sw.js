@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.7.0';
+const CACHE_VERSION = '1.8.0';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 
@@ -9,6 +9,7 @@ const PRECACHE_URLS = [
   './index.html',
   './styles.css',
   './app.js',
+  './report-pdf.js',
   './config.js',
   './manifest.webmanifest',
   './icons/logo-badge.png',
