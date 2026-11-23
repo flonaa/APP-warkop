@@ -1,0 +1,14 @@
+# Situs statis: tanpa build, folder yang dipublikasikan adalah warkop-pos.
+[build]
+  publish = "warkop-pos"
+
+# Service worker harus selalu diambil ulang agar update app langsung terpakai.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/config.js"
+  [headers.values]
+    Cache-Control = "no-cache"
