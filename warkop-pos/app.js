@@ -934,14 +934,23 @@ const kasirView = () => {
 
   const cards = products.map((product) => {
     const qty = cartQty(product.id);
+    const controls = qty
+      ? `
+        <div class="qty-control" role="group" aria-label="Jumlah ${esc(product.name)}">
+          <button class="qty-btn" type="button" data-act="menu-dec" data-id="${esc(product.id)}" aria-label="Kurangi ${esc(product.name)}">${ICONS.minus}</button>
+          <span class="qty-value" aria-live="polite">${qty}</span>
+          <button class="qty-btn is-plus" type="button" data-act="add-cart" data-id="${esc(product.id)}" aria-label="Tambah ${esc(product.name)}">${ICONS.plus}</button>
+        </div>`
+      : `<button class="qty-btn is-plus is-solo" type="button" data-act="add-cart" data-id="${esc(product.id)}" aria-label="Tambah ${esc(product.name)} ke keranjang">${ICONS.plus}</button>`;
     return `
-      <button class="product-card ${qty ? 'is-selected' : ''}" type="button" data-act="add-cart" data-id="${esc(product.id)}" aria-label="Tambah ${esc(product.name)} ke keranjang${qty ? `, ${qty} sudah ada` : ''}">
-        <span class="product-thumb"><img src="${esc(productPhoto(product))}" alt="" loading="lazy" decoding="async"></span>
-        <span class="product-meta">${esc(product.category)}</span>
-        <span class="product-name">${esc(product.name)}</span>
-        <span class="product-price">${rp(product.price)}</span>
-        ${qty ? `<span class="product-qty" aria-hidden="true">${qty}</span>` : ''}
-      </button>
+      <div class="menu-row ${qty ? 'is-selected' : ''}">
+        <span class="menu-thumb"><img src="${esc(productPhoto(product))}" alt="" loading="lazy" decoding="async"></span>
+        <span class="menu-info">
+          <span class="menu-name">${esc(product.name)}</span>
+          <span class="menu-price">${rp(product.price)}</span>
+        </span>
+        ${controls}
+      </div>
     `;
   }).join('');
 
@@ -957,7 +966,7 @@ const kasirView = () => {
       <div class="chip-row" role="group" aria-label="Filter kategori">
         ${chips}
       </div>
-      ${products.length ? `<div class="product-grid">${cards}</div>` : emptyState('Menu tidak ditemukan', 'Coba pilih kategori lain.')}
+      ${products.length ? `<div class="menu-list">${cards}</div>` : emptyState('Menu tidak ditemukan', 'Coba pilih kategori lain.')}
     </section>
   `;
 };
@@ -1474,6 +1483,14 @@ const addToCart = (id) => {
   } else {
     state.cart.push({ id: product.id, name: product.name, price: product.price, cost: product.cost || 0, qty: 1 });
   }
+  render();
+};
+
+const decFromMenu = (id) => {
+  const item = state.cart.find((row) => row.id === id);
+  if (!item) return;
+  item.qty -= 1;
+  if (item.qty <= 0) state.cart = state.cart.filter((row) => row.id !== id);
   render();
 };
 
@@ -3133,6 +3150,9 @@ document.addEventListener('click', (event) => {
       break;
     case 'add-cart':
       addToCart(target.dataset.id);
+      break;
+    case 'menu-dec':
+      decFromMenu(target.dataset.id);
       break;
     case 'open-cart':
       openCartSheet();

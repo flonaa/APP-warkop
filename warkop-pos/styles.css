@@ -3054,3 +3054,90 @@ input.date-native::-webkit-calendar-picker-indicator {
   height: 22px;
   font-size: 11px;
 }
+
+
+/* ---- Menu kasir: daftar ---- */
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(74, 48, 22, 0.05), 0 4px 14px rgba(74, 48, 22, 0.05);
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.menu-row.is-selected {
+  background: #fff8ee;
+  border-color: rgba(201, 121, 58, 0.45);
+}
+
+.menu-thumb {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+
+.menu-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-info {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.menu-name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.menu-price {
+  color: var(--amber);
+  font-size: 13.5px;
+  font-weight: 750;
+}
+
+.menu-row .qty-control {
+  flex: 0 0 auto;
+}
+
+.menu-row .qty-btn {
+  width: 38px;
+  height: 38px;
+}
+
+.menu-row .qty-btn.is-plus {
+  color: #2a1809;
+  background: linear-gradient(135deg, #f4bb74, var(--amber-deep));
+  border-color: transparent;
+}
+
+.menu-row .qty-btn.is-solo {
+  flex: 0 0 auto;
+  border-radius: 12px;
+}
