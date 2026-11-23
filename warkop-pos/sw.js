@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.3.0';
+const CACHE_VERSION = '1.4.0';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 
@@ -74,20 +74,24 @@ const offlineFallback = () => new Response(
   { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
 );
 
-// Stale-while-revalidate untuk berkas lokal: selalu cepat dari cache, tetapi
-// versi baru di server diunduh di belakang layar sehingga update aplikasi tidak
-// bergantung pada kenaikan CACHE_VERSION.
-const staleWhileRevalidate = (event, request, cacheKey) => {
-  const network = fetch(request)
+// Network-first untuk berkas lokal: saat online selalu ambil versi terbaru (maks 4 detik),
+// lalu simpan ke cache. Saat offline atau jaringan lambat, pakai cache.
+const networkFirst = (request, cacheKey) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  return fetch(request, { cache: 'no-cache', signal: controller.signal })
     .then((response) => {
+      clearTimeout(timer);
       if (response && response.ok) {
         const copy = response.clone();
         caches.open(PRECACHE_NAME).then((cache) => cache.put(cacheKey, copy)).catch(() => {});
       }
       return response;
+    })
+    .catch(() => {
+      clearTimeout(timer);
+      return caches.match(cacheKey);
     });
-  event.waitUntil(network.catch(() => {}));
-  return caches.match(cacheKey).then((cached) => cached || network);
 };
 
 self.addEventListener('fetch', (event) => {
@@ -99,7 +103,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      staleWhileRevalidate(event, request, './index.html')
+      networkFirst(request, './index.html')
         .catch(() => caches.match('./index.html'))
         .then((response) => response || offlineFallback())
         .catch(() => offlineFallback())
@@ -111,7 +115,7 @@ self.addEventListener('fetch', (event) => {
 
   if (sameOrigin) {
     event.respondWith(
-      staleWhileRevalidate(event, request, request)
+      networkFirst(request, request)
         .catch(() => caches.match(request))
         .then((response) => response || offlineFallback())
         .catch(() => offlineFallback())
