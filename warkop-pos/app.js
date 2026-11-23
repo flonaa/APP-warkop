@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.8.4';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -863,6 +863,13 @@ const logRangeLabel = () => {
     : `${formatShortDate(state.logFrom)} - ${formatShortDate(state.logTo)}`;
 };
 
+const logRangeTitle = () => {
+  if (state.logPreset === 'today') return 'Rincian hari ini';
+  if (state.logPreset === 'seven') return 'Rincian 7 hari terakhir';
+  if (state.logPreset === 'month') return 'Rincian bulan ini';
+  return state.logFrom === state.logTo ? 'Rincian per hari' : 'Rincian periode';
+};
+
 const getLogData = () => {
   applyLogPreset();
   const trx = db.trx
@@ -1333,7 +1340,7 @@ const logbookView = () => {
     <section class="section">
       <div class="section-head">
         <div>
-          <h2>Rincian per hari</h2>
+          <h2>${esc(logRangeTitle())}</h2>
           <p>${esc(logRangeLabel())}. Diurutkan dari yang terbaru.</p>
         </div>
       </div>
@@ -3380,10 +3387,10 @@ document.addEventListener('change', (event) => {
     } else {
       to = target.value || state.logTo;
     }
+    // Batas yang diubah tidak boleh melewati batas lainnya: batas lain ikut menyesuaikan.
     if (from > to) {
-      const temporary = from;
-      from = to;
-      to = temporary;
+      if (key === 'from') to = from;
+      else from = to;
     }
     state.logPreset = 'custom';
     state.logFrom = from;
