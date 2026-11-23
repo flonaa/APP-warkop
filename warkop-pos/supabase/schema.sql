@@ -12,6 +12,7 @@ create extension if not exists pgcrypto;
 create or replace function public.set_sync_columns()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if new.updated_at is null then

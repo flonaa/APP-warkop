@@ -1,4 +1,4 @@
 window.WARKOP_CONFIG = {
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: ''
+  SUPABASE_URL: 'https://hbuhqefiuexnehqcltyz.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhidWhxZWZpdWV4bmVocWNsdHl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0MjQzNzUsImV4cCI6MjExMTAwMDM3NX0.gjx-GYmy_NTrFkMG257BYstQH6mKHQXuzCCVA_e1JZ8'
 };
