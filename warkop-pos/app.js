@@ -846,6 +846,17 @@ const renderCartBar = () => {
   cartBar.setAttribute('aria-label', `Buka keranjang, ${count} item, total ${rp(total)}`);
 };
 
+// Tanggal: teks buatan sendiri + input asli transparan di atasnya, supaya tampilan identik di iOS dan Android.
+const dateText = (value) => (isValidDay(value) ? formatShortDate(value) : 'Pilih tanggal');
+
+const dateField = (id, value, extra = '') => `
+  <div class="date-field">
+    <span class="date-display" data-date-for="${id}">${esc(dateText(value))}</span>
+    <svg class="date-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 6h14v14H5z"></path><path d="M5 10h14M9 4v4M15 4v4"></path></svg>
+    <input class="date-native" type="date" id="${id}" value="${esc(value)}" ${extra}>
+  </div>
+`;
+
 const FORM_KEEP_IDS = ['e-date', 'e-category', 'e-amount', 'e-note'];
 
 const render = (options = {}) => {
@@ -1054,7 +1065,7 @@ const pengeluaranView = () => {
           <div class="form-grid">
             <div class="field">
               <label class="field-label" for="e-date">Tanggal</label>
-              <input class="input" type="date" id="e-date" value="${dkey()}" required>
+              ${dateField('e-date', dkey(), 'required')}
             </div>
             <div class="field">
               <label class="field-label" for="e-category">Kategori</label>
@@ -1184,11 +1195,11 @@ const logbookView = () => {
         <div class="filter-grid">
           <div class="field">
             <label class="field-label" for="log-from">Dari tanggal</label>
-            <input class="input" type="date" id="log-from" value="${esc(state.logFrom)}" data-log-date="from">
+            ${dateField('log-from', state.logFrom, 'data-log-date="from"')}
           </div>
           <div class="field">
             <label class="field-label" for="log-to">Sampai tanggal</label>
-            <input class="input" type="date" id="log-to" value="${esc(state.logTo)}" data-log-date="to">
+            ${dateField('log-to', state.logTo, 'data-log-date="to"')}
           </div>
         </div>
         <div class="quick-row" role="group" aria-label="Pilihan rentang cepat">
@@ -3256,6 +3267,10 @@ document.addEventListener('input', (event) => {
   if (target.matches('[data-money-input]')) {
     const digits = target.value.replace(/\D/g, '').slice(0, 12);
     target.value = digits ? formatMoneyField(Number(digits)) : '';
+  }
+  if (target.type === 'date') {
+    const display = document.querySelector(`[data-date-for="${target.id}"]`);
+    if (display) display.textContent = dateText(target.value);
   }
   if (target.id === 'cash-received') updateCashState();
   if (target.id === 'p-price' || target.id === 'p-cost') updateMarginHint();

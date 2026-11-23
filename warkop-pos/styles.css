@@ -2937,3 +2937,120 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   box-shadow: 0 1px 2px rgba(74, 48, 22, 0.05), 0 6px 18px rgba(74, 48, 22, 0.06);
 }
 .bottom-nav { box-shadow: 0 -6px 24px rgba(74, 48, 22, 0.07); }
+
+
+/* ---- Kolom tanggal (seragam di semua browser) ---- */
+.filter-grid {
+  align-items: start;
+}
+
+.filter-grid .field + .field,
+.form-grid .field + .field {
+  margin-top: 0;
+}
+
+.date-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 48px;
+  padding: 0 12px;
+  color: var(--text);
+  background: rgba(244, 240, 235, 0.95);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.date-field:focus-within {
+  border-color: rgba(201, 121, 58, 0.66);
+  box-shadow: 0 0 0 3px rgba(201, 121, 58, 0.14);
+}
+
+.date-display {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date-icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-left: 8px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+input.date-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  border: 0;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+input.date-native::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ---- Kartu produk kasir: lebih ringkas ---- */
+.product-grid {
+  gap: 9px;
+}
+
+.product-card {
+  min-height: 0;
+  padding: 9px;
+}
+
+.product-thumb {
+  margin: -9px -9px 8px;
+  aspect-ratio: 2 / 1;
+}
+
+.product-meta {
+  display: none;
+}
+
+.product-name {
+  padding-right: 0;
+  font-size: 13.5px;
+  line-height: 1.25;
+}
+
+.product-price {
+  padding-top: 6px;
+  font-size: 14px;
+}
+
+.product-qty {
+  top: 6px;
+  right: 6px;
+  min-width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
