@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -2062,13 +2062,7 @@ const renderSyncStatus = () => {
 
 const AUTH_BRAND = `
   <div class="auth-brand-mark" aria-hidden="true">
-    <svg viewBox="0 0 64 64" role="img" focusable="false">
-      <rect width="64" height="64" rx="18" fill="#2b1d13"></rect>
-      <path d="M20 25h22l-2.5 14.5a8 8 0 0 1-7.9 6.5h-1.2a8 8 0 0 1-7.9-6.5L20 25Z" fill="#f6eee5"></path>
-      <path d="M41 28h3.2a6.8 6.8 0 0 1 0 13.6H40" fill="none" stroke="#f6eee5" stroke-width="3.2"></path>
-      <ellipse cx="31" cy="25" rx="11" ry="3.2" fill="#7a4a2a"></ellipse>
-      <path d="M16 48h32" stroke="#e9a95b" stroke-width="3" stroke-linecap="round"></path>
-    </svg>
+    <img src="./icons/logo-badge.png" alt="" width="54" height="54">
   </div>
 `;
 

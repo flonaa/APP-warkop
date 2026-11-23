@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.6.0';
+const CACHE_VERSION = '1.7.0';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 
@@ -11,7 +11,9 @@ const PRECACHE_URLS = [
   './app.js',
   './config.js',
   './manifest.webmanifest',
-  './icons/icon.svg',
+  './icons/logo-badge.png',
+  './icons/favicon.png',
+  './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './images/es-teh.jpeg',

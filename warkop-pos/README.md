@@ -30,7 +30,7 @@ warkop-pos/
   supabase/
     schema.sql
   icons/
-    icon.svg
+    logo-badge.png
     icon-192.png
     icon-512.png
   tools/
@@ -246,3 +246,4 @@ File hasil akan ditulis ke `icons/icon-192.png` dan `icons/icon-512.png`.
 - Foto produk contoh (dummy); kolom `image_url` sudah disiapkan untuk fitur unggah.
 - Tema terang. Perbaikan kolom tanggal di Safari iOS.
 - Jalankan ulang `supabase/schema.sql` (atau migrasi `cost` dan `image_url`) pada database baru.
+
