@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.8.0';
+const CACHE_VERSION = '1.8.1';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 
@@ -79,7 +79,7 @@ const saveToRuntimeCache = (request, response) => {
 };
 
 const offlineFallback = () => new Response(
-  '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Warkop POS</title></head><body style="margin:0;display:grid;min-height:100vh;place-items:center;background:#15100c;color:#f6eee5;font-family:system-ui,sans-serif;text-align:center;padding:24px"><div><h1 style="font-size:20px">Aplikasi belum tersedia tanpa jaringan</h1><p style="color:#a8998a;font-size:14px">Buka aplikasi sekali lagi dengan koneksi internet, lalu coba kembali.</p></div></body></html>',
+  '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Warkop HCR</title></head><body style="margin:0;display:grid;min-height:100vh;place-items:center;background:#15100c;color:#f6eee5;font-family:system-ui,sans-serif;text-align:center;padding:24px"><div><h1 style="font-size:20px">Aplikasi belum tersedia tanpa jaringan</h1><p style="color:#a8998a;font-size:14px">Buka aplikasi sekali lagi dengan koneksi internet, lalu coba kembali.</p></div></body></html>',
   { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
 );
 

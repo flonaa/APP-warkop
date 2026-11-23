@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title Warkop POS - Server
+title Warkop HCR - Server
 cd /d "%~dp0warkop-pos"
 
 set PORT=8080
@@ -19,7 +19,7 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
 set LANIP=%LANIP: =%
 
 echo ============================================
-echo   WARKOP POS sedang berjalan
+echo   WARKOP HCR sedang berjalan
 echo ============================================
 echo   Komputer ini : http://localhost:%PORT%
 if defined LANIP echo   HP (Wi-Fi sama): http://%LANIP%:%PORT%
@@ -29,3 +29,4 @@ echo ============================================
 
 start "" "http://localhost:%PORT%"
 python -m http.server %PORT% --bind 0.0.0.0
+

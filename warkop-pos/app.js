@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -938,7 +938,7 @@ const render = (options = {}) => {
   const meta = TAB_META[state.tab] || TAB_META.kasir;
   pageTitle.textContent = meta.title;
   pageSubtitle.textContent = meta.subtitle;
-  document.title = `${meta.title} - Warkop POS`;
+  document.title = `${meta.title} - Warkop HCR`;
 
   navButtons.forEach((button) => {
     const active = button.dataset.tab === state.tab;
@@ -2077,7 +2077,7 @@ const showAuthLoading = () => {
         <div class="auth-brand">
           ${AUTH_BRAND}
           <div class="auth-brand-copy">
-            <span>Warkop POS</span>
+            <span>Warkop HCR</span>
             <strong>Data &amp; sinkronisasi</strong>
           </div>
         </div>
@@ -2122,7 +2122,7 @@ const showAuthScreen = (message = '', type = 'info') => {
         <div class="auth-brand">
           ${AUTH_BRAND}
           <div class="auth-brand-copy">
-            <span>Warkop POS</span>
+            <span>Warkop HCR</span>
             <strong>Kasir warkop</strong>
           </div>
         </div>
@@ -2878,7 +2878,7 @@ const ensureLibraries = (kind) => {
   }
 };
 
-const REPORT_BRAND = 'Warung Kopi Fauget';
+const REPORT_BRAND = 'Warkop HCR';
 
 const loadLogoDataUrl = async () => {
   try {

@@ -1,4 +1,4 @@
-# Warkop POS
+# Warkop HCR
 
 Aplikasi Point of Sale sederhana untuk warkop berbasis HTML, CSS, dan JavaScript vanilla. Aplikasi memakai Supabase untuk autentikasi dan sinkronisasi, tetap dapat dipakai saat offline melalui cache lokal, dan dapat dipasang sebagai PWA di Android maupun iOS tanpa build step.
 

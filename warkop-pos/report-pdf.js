@@ -1,7 +1,7 @@
 'use strict';
 
 /*
- * Pembuat laporan PDF Warkop POS.
+ * Pembuat laporan PDF Warkop HCR.
  * Dipisah dari app.js supaya mudah diuji. Dipakai lewat WarkopPDF.build({...}).
  */
 (function (root) {
@@ -34,7 +34,7 @@
     doc.setProperties({
       title: `Laporan ${brand}`,
       subject: `Laporan ${data.from} sampai ${data.to}`,
-      creator: 'Warkop POS'
+      creator: 'Warkop HCR'
     });
 
     const color = (rgb) => doc.setTextColor(rgb[0], rgb[1], rgb[2]);
@@ -333,7 +333,7 @@
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
       color(MUTED);
-      text(`${brand}  |  Warkop POS`, M, PAGE_H - 6.5);
+      text(brand, M, PAGE_H - 6.5);
       text(`Halaman ${page} dari ${pages}`, PAGE_W - M, PAGE_H - 6.5, { align: 'right' });
     }
 

@@ -1,6 +1,6 @@
 {
-  "name": "Warkop POS - Kasir Warkop",
-  "short_name": "Warkop POS",
+  "name": "Warkop HCR - Kasir",
+  "short_name": "Warkop HCR",
   "description": "Aplikasi kasir warkop dengan pencatatan penjualan, produk, pengeluaran, laporan, dan sinkronisasi Supabase.",
   "lang": "id",
   "id": "./",
