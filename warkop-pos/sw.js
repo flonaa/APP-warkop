@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.2.0';
+const CACHE_VERSION = '1.3.0';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 

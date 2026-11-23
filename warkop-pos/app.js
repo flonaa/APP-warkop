@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -213,13 +213,36 @@ const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a
 
 const plural = (count, word) => `${count} ${word}`;
 
+const dummyPhotoCache = new Map();
+
+// Foto contoh sementara. Setelah fitur unggah foto ada, kolom image_url yang dipakai.
+const productPhoto = (product) => {
+  if (product.image_url) return product.image_url;
+  const category = String(product.category || '').toLowerCase();
+  const kind = /minum|kopi|teh|es/.test(category) ? 'drink' : (/makan|nasi|mie/.test(category) ? 'meal' : (/camil|snack|gorengan/.test(category) ? 'snack' : 'drink'));
+  let hash = 0;
+  String(product.name || '').split('').forEach((char) => { hash = (hash * 31 + char.charCodeAt(0)) % 360; });
+  const key = `${kind}:${hash}`;
+  if (dummyPhotoCache.has(key)) return dummyPhotoCache.get(key);
+  const hue = 24 + (hash % 30);
+  const icons = {
+    drink: '<path d="M62 52h36l-4 38a12 12 0 0 1-12 11H78a12 12 0 0 1-12-11l-4-38Z" fill="#fff"/><path d="M98 60h6a10 10 0 0 1 0 20h-9" fill="none" stroke="#fff" stroke-width="5"/><path d="M70 40c3-4 3-8 0-12M82 40c3-4 3-8 0-12M94 40c3-4 3-8 0-12" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>',
+    meal: '<ellipse cx="80" cy="76" rx="38" ry="22" fill="#fff"/><ellipse cx="80" cy="72" rx="26" ry="13" fill="hsl(' + hue + ',70%,72%)"/><path d="M34 40v26M28 40v14M40 40v14M34 54v12" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M126 40c-7 6-7 18 0 24v22" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>',
+    snack: '<circle cx="64" cy="78" r="16" fill="#fff"/><circle cx="94" cy="70" r="20" fill="#fff" opacity=".92"/><circle cx="82" cy="92" r="13" fill="#fff" opacity=".85"/>'
+  };
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue},78%,66%)"/><stop offset="1" stop-color="hsl(${hue - 8},70%,48%)"/></linearGradient></defs><rect width="160" height="120" fill="url(#g)"/>${icons[kind]}</svg>`;
+  const uri = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  dummyPhotoCache.set(key, uri);
+  return uri;
+};
+
 const SEED_PRODUCTS = [
-  { name: 'Kopi Hitam', price: 8000, category: 'Minuman' },
-  { name: 'Kopi Susu', price: 12000, category: 'Minuman' },
-  { name: 'Es Teh', price: 5000, category: 'Minuman' },
-  { name: 'Indomie Goreng', price: 12000, category: 'Makanan' },
-  { name: 'Roti Bakar', price: 10000, category: 'Makanan' },
-  { name: 'Gorengan', price: 3000, category: 'Camilan' }
+  { name: 'Kopi Hitam', price: 8000, cost: 3000, category: 'Minuman' },
+  { name: 'Kopi Susu', price: 12000, cost: 5500, category: 'Minuman' },
+  { name: 'Es Teh', price: 5000, cost: 1500, category: 'Minuman' },
+  { name: 'Indomie Goreng', price: 12000, cost: 7000, category: 'Makanan' },
+  { name: 'Roti Bakar', price: 10000, cost: 4500, category: 'Makanan' },
+  { name: 'Gorengan', price: 3000, cost: 1200, category: 'Camilan' }
 ];
 
 const createSeedProducts = () => {
@@ -228,6 +251,8 @@ const createSeedProducts = () => {
     id: uid(),
     name: product.name,
     price: product.price,
+    cost: product.cost,
+    image_url: null,
     category: product.category,
     active: true,
     created_at: timestamp,
@@ -262,6 +287,9 @@ const normalizeProduct = (item, fallbackNow) => {
   if (!name) return null;
   const rawPrice = Number(item.price);
   const price = Number.isFinite(rawPrice) && rawPrice >= 0 ? Math.round(rawPrice) : 0;
+  const rawCost = Number(item.cost);
+  const cost = Number.isFinite(rawCost) && rawCost >= 0 ? Math.round(rawCost) : 0;
+  const imageUrl = typeof item.image_url === 'string' && item.image_url.trim() ? item.image_url.trim() : null;
   const category = String(item.category ?? '').trim() || 'Umum';
   const updatedAt = validIso(item.updated_at) || fallbackNow;
   const createdAt = validIso(item.created_at) || updatedAt;
@@ -271,6 +299,8 @@ const normalizeProduct = (item, fallbackNow) => {
     id,
     name,
     price,
+    cost,
+    image_url: imageUrl,
     category,
     active: item.active !== false,
     created_at: createdAt,
@@ -289,12 +319,14 @@ const normalizeTransaction = (item, fallbackNow) => {
     const name = String(row.name ?? '').trim();
     const qty = Math.floor(Number(row.qty));
     const rawPrice = Number(row.price);
+    const rawItemCost = Number(row.cost);
     if (!name || !Number.isFinite(qty) || qty <= 0) return rows;
     const productId = String(row.product_id ?? row.id ?? '').trim();
     rows.push({
       product_id: productId || uid(),
       name,
       price: Number.isFinite(rawPrice) && rawPrice >= 0 ? Math.round(rawPrice) : 0,
+      cost: Number.isFinite(rawItemCost) && rawItemCost >= 0 ? Math.round(rawItemCost) : 0,
       qty
     });
     return rows;
@@ -426,6 +458,8 @@ const migrateLegacyDB = (raw) => {
       id,
       name,
       price: Number.isFinite(price) && price >= 0 ? price : 0,
+      cost: 0,
+      image_url: null,
       category: String(item.category ?? '').trim() || 'Umum',
       active: item.active !== false,
       created_at: timestamp,
@@ -451,6 +485,7 @@ const migrateLegacyDB = (raw) => {
         product_id: idMap.get(legacyProductId) || (isUuid(legacyProductId) ? legacyProductId : uid()),
         name,
         price: Number.isFinite(price) && price >= 0 ? price : 0,
+        cost: 0,
         qty
       });
       return rows;
@@ -749,17 +784,22 @@ const getLogData = () => {
   };
 };
 
+const trxCost = (trx) => sum(trx.items.map((row) => (Number(row.cost) || 0) * row.qty));
+
 const summarize = (trx, expenses) => {
   const omzet = sum(trx.map((item) => item.total));
+  const modal = sum(trx.map(trxCost));
   const tunai = sum(trx.filter((item) => item.pay === 'tunai').map((item) => item.total));
   const qris = sum(trx.filter((item) => item.pay === 'qris').map((item) => item.total));
   const pengeluaran = sum(expenses.map((item) => item.amount));
   return {
     omzet,
+    modal,
     tunai,
     qris,
     pengeluaran,
-    laba: omzet - pengeluaran,
+    labaKotor: omzet - modal,
+    laba: omzet - modal - pengeluaran,
     count: trx.length
   };
 };
@@ -777,16 +817,18 @@ const perDay = (trx, expenses) => {
     .map((group) => {
       group.trx.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
       const omzet = sum(group.trx.map((item) => item.total));
+      const modal = sum(group.trx.map(trxCost));
       const tunai = sum(group.trx.filter((item) => item.pay === 'tunai').map((item) => item.total));
       const qris = sum(group.trx.filter((item) => item.pay === 'qris').map((item) => item.total));
       const pengeluaran = sum(group.expenses.map((item) => item.amount));
       return {
         ...group,
         omzet,
+        modal,
         tunai,
         qris,
         pengeluaran,
-        laba: omzet - pengeluaran,
+        laba: omzet - modal - pengeluaran,
         trxCount: group.trx.length
       };
     })
@@ -883,6 +925,7 @@ const kasirView = () => {
     const qty = cartQty(product.id);
     return `
       <button class="product-card ${qty ? 'is-selected' : ''}" type="button" data-act="add-cart" data-id="${esc(product.id)}" aria-label="Tambah ${esc(product.name)} ke keranjang${qty ? `, ${qty} sudah ada` : ''}">
+        <span class="product-thumb"><img src="${esc(productPhoto(product))}" alt="" loading="lazy" decoding="async"></span>
         <span class="product-meta">${esc(product.category)}</span>
         <span class="product-name">${esc(product.name)}</span>
         <span class="product-price">${rp(product.price)}</span>
@@ -949,10 +992,13 @@ const produkView = () => {
     const items = products.filter((product) => product.category === category);
     const rows = items.map((product) => `
       <button class="product-row ${product.active ? '' : 'is-inactive'}" type="button" data-act="edit-product" data-id="${esc(product.id)}" aria-label="Edit ${esc(product.name)}">
+        <span class="product-row-thumb"><img src="${esc(productPhoto(product))}" alt="" loading="lazy" decoding="async"></span>
         <span class="product-row-main">
           <span class="product-row-name">${esc(product.name)}</span>
           <span class="product-row-meta">
-            ${product.active ? 'Tampil di kasir' : '<span class="badge-muted">Nonaktif</span>'}
+            ${product.active ? '' : '<span class="badge-muted">Nonaktif</span>'}
+            <span>Modal ${rp(product.cost || 0)}</span>
+            <span class="${product.price - (product.cost || 0) >= 0 ? 'margin-pos' : 'margin-neg'}">Untung ${signedRp(product.price - (product.cost || 0))}</span>
           </span>
         </span>
         <span class="product-row-price">${rp(product.price)}</span>
@@ -1081,12 +1127,12 @@ const logbookView = () => {
         <strong class="summary-value">${rp(summary.qris)}</strong>
       </article>
       <article class="summary-card">
-        <span class="summary-label">Pengeluaran</span>
-        <strong class="summary-value">${rp(summary.pengeluaran)}</strong>
+        <span class="summary-label">Modal (HPP)</span>
+        <strong class="summary-value">${rp(summary.modal)}</strong>
       </article>
       <article class="summary-card">
-        <span class="summary-label">Jumlah transaksi</span>
-        <strong class="summary-value">${summary.count}</strong>
+        <span class="summary-label">Pengeluaran</span>
+        <strong class="summary-value">${rp(summary.pengeluaran)}</strong>
       </article>
       <article class="summary-card laba">
         <span class="summary-label">Laba bersih</span>
@@ -1350,6 +1396,7 @@ const completeSale = (pay, receivedAmount) => {
     product_id: item.id,
     name: item.name,
     price: item.price,
+    cost: item.cost || 0,
     qty: item.qty
   }));
   const total = sum(items.map((item) => item.price * item.qty));
@@ -1412,8 +1459,9 @@ const addToCart = (id) => {
     existing.qty += 1;
     existing.name = product.name;
     existing.price = product.price;
+    existing.cost = product.cost || 0;
   } else {
-    state.cart.push({ id: product.id, name: product.name, price: product.price, qty: 1 });
+    state.cart.push({ id: product.id, name: product.name, price: product.price, cost: product.cost || 0, qty: 1 });
   }
   render();
 };
@@ -1450,6 +1498,10 @@ const openProductModal = (id = '') => {
     ${sheetHeader('product-title', product ? 'Edit produk' : 'Tambah produk', 'Menu warkop')}
     <div class="sheet-body">
       <form id="product-form" data-id="${product ? esc(product.id) : ''}" autocomplete="off">
+        <div class="photo-field">
+          <div class="photo-preview"><img src="${esc(productPhoto(product || { name: 'Produk baru', category: initialCategory }))}" alt="Foto produk"></div>
+          <p class="field-hint">Foto contoh sementara. Fitur unggah foto produk menyusul.</p>
+        </div>
         <div class="field">
           <label class="field-label" for="p-name">Nama produk</label>
           <input class="input" type="text" id="p-name" value="${product ? esc(product.name) : ''}" placeholder="Contoh: Kopi Susu" autocomplete="off">
@@ -1460,6 +1512,14 @@ const openProductModal = (id = '') => {
             <span>Rp</span>
             <input class="input" type="text" id="p-price" inputmode="numeric" value="${product ? formatMoneyField(product.price) : ''}" placeholder="0" data-money-input autocomplete="off">
           </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="p-cost">Harga modal</label>
+          <div class="input-money">
+            <span>Rp</span>
+            <input class="input" type="text" id="p-cost" inputmode="numeric" value="${product ? formatMoneyField(product.cost || 0) : ''}" placeholder="0" data-money-input autocomplete="off">
+          </div>
+          <p class="field-hint margin-hint" id="p-margin" aria-live="polite"></p>
         </div>
         <div class="field">
           <label class="field-label" for="p-category">Kategori</label>
@@ -1486,6 +1546,30 @@ const openProductModal = (id = '') => {
     </div>
   `;
   openModal(content, { labelledBy: 'product-title', focus: '#p-name' });
+  updateMarginHint();
+};
+
+const updateMarginHint = () => {
+  const hint = document.getElementById('p-margin');
+  const priceInput = document.getElementById('p-price');
+  const costInput = document.getElementById('p-cost');
+  if (!hint || !priceInput || !costInput) return;
+  const price = parseMoney(priceInput.value);
+  const cost = parseMoney(costInput.value) ?? 0;
+  hint.classList.remove('is-pos', 'is-neg');
+  if (price === null) {
+    hint.textContent = 'Isi harga jual dan modal untuk melihat untung per item.';
+    return;
+  }
+  const profit = price - cost;
+  const margin = price > 0 ? Math.round((profit / price) * 100) : 0;
+  if (profit < 0) {
+    hint.classList.add('is-neg');
+    hint.textContent = `Rugi ${rp(Math.abs(profit))} per item. Harga jual di bawah modal.`;
+  } else {
+    hint.classList.add('is-pos');
+    hint.textContent = `Untung ${rp(profit)} per item (margin ${margin}%).`;
+  }
 };
 
 const saveProduct = () => {
@@ -1494,9 +1578,10 @@ const saveProduct = () => {
   const id = form.dataset.id;
   const nameInput = document.getElementById('p-name');
   const priceInput = document.getElementById('p-price');
+  const costInput = document.getElementById('p-cost');
   const categoryInput = document.getElementById('p-category');
   const activeInput = document.getElementById('p-active');
-  if (!nameInput || !priceInput || !categoryInput || !activeInput) return;
+  if (!nameInput || !priceInput || !costInput || !categoryInput || !activeInput) return;
 
   const name = nameInput.value.trim();
   if (!name) {
@@ -1514,6 +1599,7 @@ const saveProduct = () => {
     toast('Harga produk tidak boleh negatif.', 'error');
     return;
   }
+  const cost = parseMoney(costInput.value) ?? 0;
   const category = categoryInput.value.trim() || 'Umum';
   const active = activeInput.checked;
   let message = 'Produk berhasil ditambahkan.';
@@ -1529,6 +1615,7 @@ const saveProduct = () => {
       ...db.products[index],
       name,
       price,
+      cost,
       category,
       active,
       updated_at: nowIso()
@@ -1536,7 +1623,7 @@ const saveProduct = () => {
     db.products[index] = savedProduct;
     state.cart = state.cart
       .filter((item) => item.id !== id || active)
-      .map((item) => (item.id === id ? { ...item, name, price } : item));
+      .map((item) => (item.id === id ? { ...item, name, price, cost } : item));
     message = 'Produk berhasil diperbarui.';
   } else {
     const timestamp = nowIso();
@@ -1544,6 +1631,8 @@ const saveProduct = () => {
       id: uid(),
       name,
       price,
+      cost,
+      image_url: null,
       category,
       active,
       created_at: timestamp,
@@ -1673,6 +1762,8 @@ const productToRow = (product) => ({
   id: product.id,
   name: product.name,
   price: product.price,
+  cost: product.cost || 0,
+  image_url: product.image_url || null,
   category: product.category,
   active: product.active,
   created_at: product.created_at,
@@ -1685,6 +1776,7 @@ const transactionToRow = (trx) => {
     product_id: item.product_id,
     name: item.name,
     price: item.price,
+    cost: item.cost || 0,
     qty: item.qty
   }));
   return {
@@ -2271,7 +2363,7 @@ const reconcileCartWithProducts = () => {
   state.cart = state.cart.reduce((list, item) => {
     const product = db.products.find((row) => row.id === item.id);
     if (!product || product.deleted_at || !product.active) return list;
-    list.push({ ...item, name: product.name, price: product.price });
+    list.push({ ...item, name: product.name, price: product.price, cost: product.cost || 0 });
     return list;
   }, []);
   const changed = before !== JSON.stringify(state.cart);
@@ -2707,18 +2799,20 @@ const exportPDF = () => {
       body: [
         ['Omzet', rp(data.summary.omzet), 'Jumlah transaksi', String(data.summary.count)],
         ['Tunai', rp(data.summary.tunai), 'QRIS', rp(data.summary.qris)],
+        ['Modal (HPP)', rp(data.summary.modal), 'Laba kotor', signedRp(data.summary.labaKotor)],
         ['Pengeluaran', rp(data.summary.pengeluaran), 'Laba bersih', signedRp(data.summary.laba)]
       ]
     });
 
     addTable('Rekap per hari', {
-      head: [['Tanggal', 'Jumlah Trx', 'Omzet', 'Tunai', 'QRIS', 'Pengeluaran', 'Laba']],
+      head: [['Tanggal', 'Jumlah Trx', 'Omzet', 'Tunai', 'QRIS', 'Modal', 'Pengeluaran', 'Laba']],
       body: data.days.map((day) => [
         formatShortDate(day.day),
         String(day.trxCount),
         rp(day.omzet),
         rp(day.tunai),
         rp(day.qris),
+        rp(day.modal),
         rp(day.pengeluaran),
         signedRp(day.laba)
       ]),
@@ -2728,25 +2822,28 @@ const exportPDF = () => {
         rp(data.summary.omzet),
         rp(data.summary.tunai),
         rp(data.summary.qris),
+        rp(data.summary.modal),
         rp(data.summary.pengeluaran),
         signedRp(data.summary.laba)
       ]]
     });
 
     addTable('Detail transaksi', {
-      head: [['Tanggal', 'Jam', 'Item', 'Bayar', 'Total']],
+      head: [['Tanggal', 'Jam', 'Item', 'Bayar', 'Total', 'Modal']],
       body: data.trx.length
         ? data.trx.map((trx) => [
           formatShortDate(trx.day),
           formatTime(trx.created_at),
           trx.items.map((item) => `${item.name} x${item.qty}`).join(', '),
           trx.pay === 'tunai' ? 'Tunai' : 'QRIS',
-          rp(trx.total)
+          rp(trx.total),
+          rp(trxCost(trx))
         ])
-        : [[{ content: 'Tidak ada transaksi pada periode ini.', colSpan: 5 }]],
+        : [[{ content: 'Tidak ada transaksi pada periode ini.', colSpan: 6 }]],
       columnStyles: {
-        2: { cellWidth: 112 },
-        4: { halign: 'right' }
+        2: { cellWidth: 100 },
+        4: { halign: 'right' },
+        5: { halign: 'right' }
       }
     });
 
@@ -2799,36 +2896,39 @@ const exportXLSX = () => {
     const workbook = XLSX.utils.book_new();
 
     const perDayRows = [
-      ['Tanggal', 'Jumlah Trx', 'Omzet', 'Tunai', 'QRIS', 'Pengeluaran', 'Laba'],
+      ['Tanggal', 'Jumlah Trx', 'Omzet', 'Tunai', 'QRIS', 'Modal (HPP)', 'Pengeluaran', 'Laba Bersih'],
       ...data.days.map((day) => [
         formatShortDate(day.day),
         day.trxCount,
         day.omzet,
         day.tunai,
         day.qris,
+        day.modal,
         day.pengeluaran,
         day.laba
       ])
     ];
     const perDaySheet = XLSX.utils.aoa_to_sheet(perDayRows);
-    perDaySheet['!cols'] = [{ wch: 13 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 14 }];
+    perDaySheet['!cols'] = [{ wch: 13 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(workbook, perDaySheet, 'Per Hari');
 
     const trxRows = [
-      ['Tanggal', 'Jam', 'Metode', 'Item', 'Total'],
+      ['Tanggal', 'Jam', 'Metode', 'Item', 'Total', 'Modal', 'Laba Kotor'],
       ...data.trx.map((trx) => [
         formatShortDate(trx.day),
         formatTime(trx.created_at),
         trx.pay === 'tunai' ? 'Tunai' : 'QRIS',
         trx.items.map((item) => `${item.name} x${item.qty}`).join(', '),
-        trx.total
+        trx.total,
+        trxCost(trx),
+        trx.total - trxCost(trx)
       ])
     ];
     const trxSheet = XLSX.utils.aoa_to_sheet(trxRows);
-    trxSheet['!cols'] = [{ wch: 13 }, { wch: 8 }, { wch: 11 }, { wch: 48 }, { wch: 14 }];
+    trxSheet['!cols'] = [{ wch: 13 }, { wch: 8 }, { wch: 11 }, { wch: 48 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(workbook, trxSheet, 'Transaksi');
 
-    const detailRows = [['Tanggal', 'Jam', 'Produk', 'Qty', 'Harga', 'Subtotal', 'Bayar']];
+    const detailRows = [['Tanggal', 'Jam', 'Produk', 'Qty', 'Harga Jual', 'Modal', 'Subtotal', 'Laba', 'Bayar']];
     data.trx.forEach((trx) => {
       trx.items.forEach((item) => {
         detailRows.push([
@@ -2837,13 +2937,15 @@ const exportXLSX = () => {
           item.name,
           item.qty,
           item.price,
+          item.cost || 0,
           item.price * item.qty,
+          (item.price - (item.cost || 0)) * item.qty,
           trx.pay === 'tunai' ? 'TUNAI' : 'QRIS'
         ]);
       });
     });
     const detailSheet = XLSX.utils.aoa_to_sheet(detailRows);
-    detailSheet['!cols'] = [{ wch: 13 }, { wch: 8 }, { wch: 28 }, { wch: 7 }, { wch: 12 }, { wch: 14 }, { wch: 10 }];
+    detailSheet['!cols'] = [{ wch: 13 }, { wch: 8 }, { wch: 28 }, { wch: 7 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail Item');
 
     const expenseRows = [
@@ -3156,6 +3258,7 @@ document.addEventListener('input', (event) => {
     target.value = digits ? formatMoneyField(Number(digits)) : '';
   }
   if (target.id === 'cash-received') updateCashState();
+  if (target.id === 'p-price' || target.id === 'p-cost') updateMarginHint();
 });
 
 document.addEventListener('change', (event) => {

@@ -31,6 +31,8 @@ create table if not exists public.products (
   id uuid primary key,
   name text not null,
   price bigint not null check (price >= 0),
+  cost bigint not null default 0 check (cost >= 0),
+  image_url text,
   category text not null default 'Umum',
   active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -68,6 +70,8 @@ alter table public.products add column if not exists synced_at timestamptz not n
 alter table public.transactions add column if not exists synced_at timestamptz not null default now();
 alter table public.expenses add column if not exists synced_at timestamptz not null default now();
 alter table public.products alter column price type bigint;
+alter table public.products add column if not exists cost bigint not null default 0 check (cost >= 0);
+alter table public.products add column if not exists image_url text;
 alter table public.transactions alter column total type bigint;
 alter table public.transactions alter column received type bigint;
 alter table public.transactions alter column change type bigint;

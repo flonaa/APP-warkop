@@ -239,3 +239,10 @@ File hasil akan ditulis ke `icons/icon-192.png` dan `icons/icon-512.png`.
 - Tarik data memakai `synced_at` (jam server), bukan `updated_at` (jam perangkat), sehingga data yang dibuat offline tetap sampai ke perangkat lain.
 - Antrean dikirim per batch; item yang ditolak server (constraint) dipindah ke daftar "ditolak" dan tidak lagi memblokir antrean.
 - File lokal memakai stale-while-revalidate: update aplikasi terambil otomatis pada pembukaan berikutnya.
+
+## Pembaruan 1.3.0
+
+- Harga modal per produk; laba bersih = omzet - modal (HPP) - pengeluaran. Modal disimpan sebagai snapshot di setiap item transaksi, jadi perubahan modal tidak mengubah laporan lama. Transaksi sebelum 1.3.0 tidak punya modal (dihitung 0).
+- Foto produk contoh (dummy); kolom `image_url` sudah disiapkan untuk fitur unggah.
+- Tema terang. Perbaikan kolom tanggal di Safari iOS.
+- Jalankan ulang `supabase/schema.sql` (atau migrasi `cost` dan `image_url`) pada database baru.
