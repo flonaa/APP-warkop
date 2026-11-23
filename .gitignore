@@ -1,0 +1,15 @@
+# Arsip hasil build/deploy, bukan source utama
+warkop-pos.zip
+
+# Berkas sistem dan log
+.DS_Store
+Thumbs.db
+*.log
+
+# Folder pengujian lokal
+warkop-pos/.test*/
+warkop-pos/.test2*/
+
+# Konfigurasi rahasia tambahan
+.env
+.env.*

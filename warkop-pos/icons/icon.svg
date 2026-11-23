@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="iconTitle iconDesc">
+  <title id="iconTitle">Warkop POS</title>
+  <desc id="iconDesc">Ikon cangkir kopi krem dengan piring di atas latar coklat tua.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a2719"/>
+      <stop offset="0.55" stop-color="#281b12"/>
+      <stop offset="1" stop-color="#17100b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.35" r="0.62">
+      <stop offset="0" stop-color="#e9a95b" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#e9a95b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#fff7eb"/>
+      <stop offset="0.62" stop-color="#f2e2cf"/>
+      <stop offset="1" stop-color="#dfc6a9"/>
+    </linearGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4e7d6"/>
+      <stop offset="1" stop-color="#d6bb9a"/>
+    </linearGradient>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="210" r="220" fill="url(#glow)"/>
+
+  <ellipse cx="256" cy="378" rx="154" ry="25" fill="#000000" opacity="0.28" filter="url(#softShadow)"/>
+  <ellipse cx="256" cy="358" rx="174" ry="34" fill="url(#plate)"/>
+  <ellipse cx="256" cy="352" rx="118" ry="19" fill="#e4ceb3"/>
+  <ellipse cx="256" cy="350" rx="94" ry="13" fill="#d3b896" opacity="0.8"/>
+
+  <path d="M352 218h20c31 0 56 25 56 56s-25 56-56 56h-20" fill="none" stroke="url(#cup)" stroke-width="23" stroke-linecap="round"/>
+  <path d="M152 186h208l-17 137c-3 24-23 41-47 41h-80c-24 0-44-17-47-41l-17-137Z" fill="url(#cup)"/>
+  <path d="M170 219h16c2 54 11 91 27 119h-1c-18-9-30-26-33-49l-9-70Z" fill="#ffffff" opacity="0.23"/>
+
+  <ellipse cx="256" cy="186" rx="104" ry="22" fill="url(#cup)"/>
+  <ellipse cx="256" cy="187" rx="87" ry="14" fill="#5a351f"/>
+  <ellipse cx="256" cy="184" rx="76" ry="9" fill="#7a4a2a"/>
+  <ellipse cx="230" cy="182" rx="25" ry="5" fill="#a36b43" opacity="0.55"/>
+
+  <path d="M184 366c19 10 44 16 72 16s53-6 72-16" fill="none" stroke="#c9ab88" stroke-width="5" stroke-linecap="round" opacity="0.65"/>
+</svg>

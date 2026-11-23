@@ -1,0 +1,28 @@
+{
+  "name": "Warkop POS - Kasir Warkop",
+  "short_name": "Warkop POS",
+  "description": "Aplikasi kasir warkop dengan pencatatan penjualan, produk, pengeluaran, laporan, dan sinkronisasi Supabase.",
+  "lang": "id",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15100c",
+  "theme_color": "#15100c",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

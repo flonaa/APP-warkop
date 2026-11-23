@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#15100c">
+  <meta name="description" content="Aplikasi kasir warkop dengan pencatatan penjualan, produk, pengeluaran, laporan, dan sinkronisasi Supabase.">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Warkop POS">
+  <meta name="format-detection" content="telephone=no">
+
+  <title>Kasir - Warkop POS</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 64" role="img" focusable="false">
+          <rect width="64" height="64" rx="18" fill="#2b1d13"></rect>
+          <path d="M20 25h22l-2.5 14.5a8 8 0 0 1-7.9 6.5h-1.2a8 8 0 0 1-7.9-6.5L20 25Z" fill="#f6eee5"></path>
+          <path d="M41 28h3.2a6.8 6.8 0 0 1 0 13.6H40" fill="none" stroke="#f6eee5" stroke-width="3.2"></path>
+          <ellipse cx="31" cy="25" rx="11" ry="3.2" fill="#7a4a2a"></ellipse>
+          <path d="M16 48h32" stroke="#e9a95b" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
+      </div>
+      <div class="topbar-copy">
+        <span class="topbar-eyebrow">Warkop POS</span>
+        <h1 id="pageTitle">Kasir</h1>
+        <p id="pageSubtitle">Pilih menu, lalu bayar dalam sekali sentuh.</p>
+      </div>
+      <button class="icon-btn topbar-action" type="button" data-act="settings-open" aria-label="Buka pengaturan" title="Pengaturan">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M4 7h8"></path>
+          <path d="M16 7h4"></path>
+          <circle cx="14" cy="7" r="2"></circle>
+          <path d="M4 17h4"></path>
+          <path d="M12 17h8"></path>
+          <circle cx="10" cy="17" r="2"></circle>
+        </svg>
+      </button>
+    </div>
+    <div class="sync-strip">
+      <button id="syncStatus" class="sync-status is-local" type="button" data-act="sync-status" aria-live="polite">
+        <span class="sync-dot" aria-hidden="true"></span>
+        <span id="syncStatusText" class="sync-status-text">Mode lokal</span>
+        <span id="syncStatusHint" class="sync-status-hint">Supabase belum dikonfigurasi</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="view" class="view" aria-live="off">
+    <div class="loading-state">
+      <p>Memuat aplikasi...</p>
+    </div>
+  </main>
+
+  <button id="cartBar" class="cart-bar" type="button" data-act="open-cart" aria-label="Buka keranjang pembayaran" hidden>
+    <span class="cart-bar-left">
+      <span id="cartCount" class="cart-count">0 item</span>
+      <span id="cartTotal" class="cart-total">Rp 0</span>
+    </span>
+    <span class="cart-pay">Bayar</span>
+  </button>
+
+  <nav class="bottom-nav" aria-label="Navigasi utama">
+    <div class="bottom-nav-inner">
+      <button class="nav-item is-active" type="button" data-act="tab" data-tab="kasir" aria-current="page">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M4 9.5 6.2 4h11.6L20 9.5"></path>
+            <path d="M4 9.5h16V20H4z"></path>
+            <path d="M9 20v-6h6v6"></path>
+            <path d="M4 9.5h16"></path>
+          </svg>
+        </span>
+        <span>Kasir</span>
+      </button>
+      <button class="nav-item" type="button" data-act="tab" data-tab="produk">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="m4 8 8-4 8 4-8 4-8-4Z"></path>
+            <path d="M4 8v8l8 4 8-4V8"></path>
+            <path d="M12 12v8"></path>
+          </svg>
+        </span>
+        <span>Produk</span>
+      </button>
+      <button class="nav-item" type="button" data-act="tab" data-tab="pengeluaran">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M5 5h14v14H5z"></path>
+            <path d="M8 9h8"></path>
+            <path d="M8 13h5"></path>
+            <path d="m15 17 3-3"></path>
+          </svg>
+        </span>
+        <span>Pengeluaran</span>
+      </button>
+      <button class="nav-item" type="button" data-act="tab" data-tab="logbook">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M6 3.5h12v17H6z"></path>
+            <path d="M9 7.5h6"></path>
+            <path d="M9 11.5h6"></path>
+            <path d="M9 15.5h4"></path>
+            <path d="M3.5 6.5v13A1.5 1.5 0 0 0 5 21h1"></path>
+          </svg>
+        </span>
+        <span>Logbook</span>
+      </button>
+    </div>
+  </nav>
+
+  <div id="modalRoot"></div>
+  <div id="authRoot"></div>
+  <div id="toastRoot" class="toast-root" aria-live="polite" aria-atomic="false"></div>
+
+  <noscript>
+    <div class="noscript">Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript lalu muat ulang halaman.</div>
+  </noscript>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <script defer src="./config.js"></script>
+  <script defer src="./app.js"></script>
+</body>
+</html>
