@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.8.2';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -685,6 +685,7 @@ const state = {
   tab: 'kasir',
   category: 'Semua',
   cart: [],
+  logPreset: 'month',
   logFrom: startOfMonthKey(),
   logTo: dkey(),
   saving: false
@@ -837,7 +838,33 @@ const acceptConfirm = () => {
   if (typeof action === 'function') action();
 };
 
+// Preset (hari ini, 7 hari, bulan ini) selalu dihitung dari tanggal hari ini,
+// jadi tetap benar kalau app dibiarkan terbuka sampai lewat tengah malam.
+const applyLogPreset = () => {
+  const today = dkey();
+  if (state.logPreset === 'today') {
+    state.logFrom = today;
+    state.logTo = today;
+  } else if (state.logPreset === 'seven') {
+    state.logFrom = addDaysKey(today, -6);
+    state.logTo = today;
+  } else if (state.logPreset === 'month') {
+    state.logFrom = startOfMonthKey();
+    state.logTo = today;
+  }
+};
+
+const logRangeLabel = () => {
+  if (state.logPreset === 'today') return `Hari ini, ${formatLongDay(state.logTo)}`;
+  if (state.logPreset === 'seven') return `7 hari terakhir, ${formatShortDate(state.logFrom)} - ${formatShortDate(state.logTo)}`;
+  if (state.logPreset === 'month') return `Bulan ini, ${monthLabel(state.logFrom)}`;
+  return state.logFrom === state.logTo
+    ? formatLongDay(state.logFrom)
+    : `${formatShortDate(state.logFrom)} - ${formatShortDate(state.logTo)}`;
+};
+
 const getLogData = () => {
+  applyLogPreset();
   const trx = db.trx
     .filter((item) => item.day >= state.logFrom && item.day <= state.logTo)
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
@@ -1299,7 +1326,7 @@ const logbookView = () => {
       <div class="section-head">
         <div>
           <h2>Rincian per hari</h2>
-          <p>Transaksi dan pengeluaran diurutkan dari yang terbaru.</p>
+          <p>${esc(logRangeLabel())}. Diurutkan dari yang terbaru.</p>
         </div>
       </div>
       ${data.days.length
@@ -1913,17 +1940,8 @@ const deleteExpense = (id) => {
 };
 
 const setLogPreset = (preset) => {
-  const today = dkey();
-  if (preset === 'today') {
-    state.logFrom = today;
-    state.logTo = today;
-  } else if (preset === 'seven') {
-    state.logFrom = addDaysKey(today, -6);
-    state.logTo = today;
-  } else {
-    state.logFrom = startOfMonthKey();
-    state.logTo = today;
-  }
+  state.logPreset = preset === 'today' || preset === 'seven' ? preset : 'month';
+  applyLogPreset();
   render();
 };
 
@@ -3137,6 +3155,7 @@ const handleOffline = () => {
 
 const handleVisibilityChange = () => {
   if (document.visibilityState !== 'visible') return;
+  if (state.tab === 'logbook' && !modalRoot.childElementCount) render({ keepForm: true });
   if (!syncState.online || !syncState.session) return;
   requestSync({ pull: true });
 };
@@ -3144,6 +3163,17 @@ const handleVisibilityChange = () => {
 window.addEventListener('online', handleOnline);
 window.addEventListener('offline', handleOffline);
 document.addEventListener('visibilitychange', handleVisibilityChange);
+
+// Desktop: klik di mana saja pada kolom tanggal membuka kalender. HP membukanya sendiri.
+document.addEventListener('click', (event) => {
+  const input = event.target instanceof Element ? event.target.closest('.date-field')?.querySelector('input.date-native') : null;
+  if (!input || typeof input.showPicker !== 'function') return;
+  try {
+    input.showPicker();
+  } catch (error) {
+    // Kalender sudah terbuka atau browser menolak; pemilih bawaan tetap bisa dipakai.
+  }
+});
 
 document.addEventListener('click', (event) => {
   const target = event.target.closest('[data-act]');
@@ -3347,6 +3377,7 @@ document.addEventListener('change', (event) => {
       from = to;
       to = temporary;
     }
+    state.logPreset = 'custom';
     state.logFrom = from;
     state.logTo = to;
     render();
