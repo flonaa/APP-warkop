@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.5.2';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -1547,7 +1547,7 @@ const openProductModal = (id = '') => {
           <input class="input" type="text" id="p-name" value="${product ? esc(product.name) : ''}" placeholder="Contoh: Kopi Susu" autocomplete="off">
         </div>
         <div class="field">
-          <label class="field-label" for="p-price">Harga</label>
+          <label class="field-label" for="p-price">Harga jual</label>
           <div class="input-money">
             <span>Rp</span>
             <input class="input" type="text" id="p-price" inputmode="numeric" value="${product ? formatMoneyField(product.price) : ''}" placeholder="0" data-money-input autocomplete="off">
@@ -1631,7 +1631,7 @@ const saveProduct = () => {
   }
   const price = parseMoney(priceInput.value);
   if (price === null) {
-    toast('Harga produk wajib diisi.', 'error');
+    toast('Harga jual wajib diisi.', 'error');
     priceInput.focus();
     return;
   }
