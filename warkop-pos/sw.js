@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.5.1';
+const CACHE_VERSION = '1.6.0';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 
@@ -125,6 +125,16 @@ self.addEventListener('fetch', (event) => {
         .catch(() => caches.match(request))
         .then((response) => response || offlineFallback())
         .catch(() => offlineFallback())
+    );
+    return;
+  }
+
+  // Foto produk publik di Supabase Storage boleh di-cache (isinya statis); API Supabase tidak.
+  if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/storage/v1/object/public/')) {
+    event.respondWith(
+      caches.match(request)
+        .then((cached) => cached || fetch(request).then((response) => saveToRuntimeCache(request, response)))
+        .catch(() => new Response('', { status: 503, statusText: 'Offline' }))
     );
     return;
   }

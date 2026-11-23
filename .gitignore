@@ -16,3 +16,7 @@ warkop-pos/.test2*/
 
 # Tautan lokal Netlify CLI
 .netlify/
+
+# Halaman web tersimpan (bukan aset aplikasi)
+*.htm
+*.html.bak

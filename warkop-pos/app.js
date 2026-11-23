@@ -2,13 +2,15 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.6.0';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const EXPENSE_CATEGORIES = ['Bahan Baku', 'Listrik', 'Gas', 'Gaji', 'Sewa', 'Lainnya'];
 const MAX_MONEY = 999999999999;
 const MAX_REJECTED = 50;
+const PHOTO_BUCKET = 'product-images';
+const PHOTO_SIZE = 640;
 
 const APP_CONFIG = window.WARKOP_CONFIG || {};
 const SUPABASE_URL = String(APP_CONFIG.SUPABASE_URL || '').trim().replace(/\/+$/, '');
@@ -212,6 +214,60 @@ const isNewerOrEqual = (remoteUpdatedAt, localUpdatedAt) => {
 const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
 
 const plural = (count, word) => `${count} ${word}`;
+
+let photoDraft = { blob: null, previewUrl: '', remove: false };
+
+const resetPhotoDraft = () => {
+  if (photoDraft.previewUrl) URL.revokeObjectURL(photoDraft.previewUrl);
+  photoDraft = { blob: null, previewUrl: '', remove: false };
+};
+
+// Foto dipotong persegi di tengah, dikecilkan, dan dikompres di perangkat sebelum diunggah.
+const compressPhoto = async (file) => {
+  let source;
+  let width;
+  let height;
+  if (typeof createImageBitmap === 'function') {
+    source = await createImageBitmap(file);
+    width = source.width;
+    height = source.height;
+  } else {
+    const url = URL.createObjectURL(file);
+    try {
+      source = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Gambar tidak bisa dibaca'));
+        img.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+    width = source.naturalWidth;
+    height = source.naturalHeight;
+  }
+  const side = Math.min(width, height);
+  const size = Math.min(PHOTO_SIZE, side);
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, size, size);
+  context.drawImage(source, (width - side) / 2, (height - side) / 2, side, side, 0, 0, size, size);
+  if (typeof source.close === 'function') source.close();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+  if (!blob) throw new Error('Gagal memproses gambar');
+  return blob;
+};
+
+const uploadPhoto = async (blob) => {
+  const path = `${uid()}.jpg`;
+  await authAwareRequest(() => syncState.client.storage
+    .from(PHOTO_BUCKET)
+    .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false }));
+  return syncState.client.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+};
 
 const dummyPhotoCache = new Map();
 
@@ -731,6 +787,7 @@ const closeModal = () => {
   modalRoot.innerHTML = '';
   document.body.classList.remove('modal-open');
   state.saving = false;
+  resetPhotoDraft();
   if (lastFocus instanceof HTMLElement && document.contains(lastFocus)) {
     lastFocus.focus();
   }
@@ -1523,6 +1580,7 @@ const changeCartQty = (id, delta) => {
 };
 
 const openProductModal = (id = '') => {
+  resetPhotoDraft();
   const product = id ? db.products.find((item) => item.id === id && !item.deleted_at) : null;
   if (id && !product) {
     toast('Produk tidak ditemukan.', 'error');
@@ -1539,8 +1597,13 @@ const openProductModal = (id = '') => {
     <div class="sheet-body">
       <form id="product-form" data-id="${product ? esc(product.id) : ''}" autocomplete="off">
         <div class="photo-field">
-          <div class="photo-preview"><img src="${esc(productPhoto(product || { name: 'Produk baru', category: initialCategory }))}" alt="Foto produk"></div>
-          <p class="field-hint">Foto contoh sementara. Fitur unggah foto produk menyusul.</p>
+          <div class="photo-preview"><img id="p-photo-img" src="${esc(productPhoto(product || { name: 'Produk baru', category: initialCategory }))}" alt="Foto produk"></div>
+          <div class="photo-actions">
+            <button class="btn btn-ghost btn-sm" type="button" data-act="photo-pick">${ICONS.upload}<span>Pilih foto</span></button>
+            <button class="link-btn danger" type="button" data-act="photo-remove" id="p-photo-remove" ${product && product.image_url ? '' : 'hidden'}>Hapus foto</button>
+            <input type="file" id="p-photo-file" accept="image/*" hidden>
+            <p class="field-hint" id="p-photo-hint">Foto dikecilkan otomatis. Butuh internet saat menyimpan.</p>
+          </div>
         </div>
         <div class="field">
           <label class="field-label" for="p-name">Nama produk</label>
@@ -1612,9 +1675,45 @@ const updateMarginHint = () => {
   }
 };
 
-const saveProduct = () => {
+const handlePhotoFile = async (file) => {
+  if (!file) return;
+  const hint = document.getElementById('p-photo-hint');
+  if (!/^image\//.test(file.type) && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
+    toast('Berkas harus berupa gambar.', 'error');
+    return;
+  }
+  if (hint) hint.textContent = 'Memproses foto...';
+  try {
+    const blob = await compressPhoto(file);
+    resetPhotoDraft();
+    photoDraft = { blob, previewUrl: URL.createObjectURL(blob), remove: false };
+    const image = document.getElementById('p-photo-img');
+    if (image) image.src = photoDraft.previewUrl;
+    document.getElementById('p-photo-remove')?.removeAttribute('hidden');
+    if (hint) hint.textContent = `Foto siap (${Math.round(blob.size / 1024)} KB). Tekan Simpan untuk mengunggah.`;
+  } catch (error) {
+    if (hint) hint.textContent = 'Foto gagal diproses. Coba foto lain.';
+    toast('Foto tidak bisa diproses. Coba foto lain.', 'error');
+  }
+};
+
+const removePhotoDraft = () => {
   const form = document.getElementById('product-form');
-  if (!form) return;
+  const product = db.products.find((item) => item.id === form?.dataset.id);
+  resetPhotoDraft();
+  photoDraft.remove = true;
+  const image = document.getElementById('p-photo-img');
+  if (image) {
+    image.src = productPhoto({ name: document.getElementById('p-name')?.value || product?.name || '', category: product?.category || '', image_url: null });
+  }
+  document.getElementById('p-photo-remove')?.setAttribute('hidden', '');
+  const hint = document.getElementById('p-photo-hint');
+  if (hint) hint.textContent = 'Foto akan dihapus saat disimpan.';
+};
+
+const saveProduct = async () => {
+  const form = document.getElementById('product-form');
+  if (!form || state.saving) return;
   const id = form.dataset.id;
   const nameInput = document.getElementById('p-name');
   const priceInput = document.getElementById('p-price');
@@ -1645,6 +1744,35 @@ const saveProduct = () => {
   let message = 'Produk berhasil ditambahkan.';
   let savedProduct = null;
 
+  // undefined = foto tidak berubah; null = hapus foto; string = alamat foto baru.
+  let imageUrl;
+  if (photoDraft.blob) {
+    if (!canSync()) {
+      toast('Unggah foto butuh internet dan harus sudah masuk. Simpan tanpa foto atau coba lagi saat online.', 'error');
+      return;
+    }
+    const saveButton = form.querySelector('[data-act="save-product"]');
+    state.saving = true;
+    if (saveButton instanceof HTMLButtonElement) {
+      saveButton.disabled = true;
+      saveButton.textContent = 'Mengunggah...';
+    }
+    try {
+      imageUrl = await uploadPhoto(photoDraft.blob);
+    } catch (error) {
+      state.saving = false;
+      if (saveButton instanceof HTMLButtonElement && saveButton.isConnected) {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Simpan';
+      }
+      toast(error?.isAuthExpired ? 'Sesi berakhir. Masuk kembali.' : 'Foto gagal diunggah. Periksa koneksi lalu coba lagi.', 'error');
+      return;
+    }
+    state.saving = false;
+  } else if (photoDraft.remove) {
+    imageUrl = null;
+  }
+
   if (id) {
     const index = db.products.findIndex((item) => item.id === id && !item.deleted_at);
     if (index < 0) {
@@ -1658,6 +1786,7 @@ const saveProduct = () => {
       cost,
       category,
       active,
+      ...(imageUrl !== undefined ? { image_url: imageUrl } : {}),
       updated_at: nowIso()
     };
     db.products[index] = savedProduct;
@@ -1672,7 +1801,7 @@ const saveProduct = () => {
       name,
       price,
       cost,
-      image_url: null,
+      image_url: imageUrl ?? null,
       category,
       active,
       created_at: timestamp,
@@ -3207,6 +3336,12 @@ document.addEventListener('click', (event) => {
     case 'save-qris':
       completeSale('qris', cartTotalValue());
       break;
+    case 'photo-pick':
+      document.getElementById('p-photo-file')?.click();
+      break;
+    case 'photo-remove':
+      removePhotoDraft();
+      break;
     case 'new-product':
       openProductModal();
       break;
@@ -3335,6 +3470,12 @@ document.addEventListener('change', (event) => {
     state.logFrom = from;
     state.logTo = to;
     render();
+    return;
+  }
+  if (target instanceof HTMLInputElement && target.id === 'p-photo-file') {
+    const file = target.files?.[0];
+    target.value = '';
+    void handlePhotoFile(file);
     return;
   }
   if (target instanceof HTMLInputElement && target.id === 'backup-file') {

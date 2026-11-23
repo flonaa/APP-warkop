@@ -3141,3 +3141,26 @@ input.date-native::-webkit-calendar-picker-indicator {
   flex: 0 0 auto;
   border-radius: 12px;
 }
+
+
+.photo-actions {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.photo-actions .btn {
+  gap: 7px;
+}
+
+.photo-actions .btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
