@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.8.2';
+const APP_VERSION = '1.8.3';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -1321,6 +1321,14 @@ const logbookView = () => {
     </div>
 
     ${summaryCards}
+
+    ${summary.omzet > 0 && summary.modal === 0 ? `
+      <div class="notice" role="note">
+        <strong>Modal (HPP) masih Rp 0.</strong>
+        Harga modal produk belum diisi, jadi laba bersih sama dengan omzet dikurangi pengeluaran saja.
+        Isi modal di tab Produk. Transaksi yang sudah tercatat tidak berubah, hanya penjualan berikutnya yang memakai modal baru.
+      </div>
+    ` : ''}
 
     <section class="section">
       <div class="section-head">
