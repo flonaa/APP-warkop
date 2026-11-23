@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.5.0';
+const CACHE_VERSION = '1.5.1';
 const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
 const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
 
@@ -14,6 +14,7 @@ const PRECACHE_URLS = [
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './images/es-teh.jpeg',
   './images/kopi-hitam.jpeg',
   './images/kopi-susu.jpeg',
   './images/gorengan.jpeg',

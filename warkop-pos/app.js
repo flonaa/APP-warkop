@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -218,6 +218,7 @@ const dummyPhotoCache = new Map();
 // Foto contoh sementara. Setelah fitur unggah foto ada, kolom image_url yang dipakai.
 // Foto bawaan per nama produk (berkas ada di folder images/). image_url dari database selalu didahulukan.
 const PRODUCT_PHOTOS = {
+  'es teh': 'images/es-teh.jpeg',
   'kopi hitam': 'images/kopi-hitam.jpeg',
   'kopi susu': 'images/kopi-susu.jpeg',
   'gorengan': 'images/gorengan.jpeg',
