@@ -13,3 +13,6 @@ warkop-pos/.test2*/
 # Konfigurasi rahasia tambahan
 .env
 .env.*
+
+# Tautan lokal Netlify CLI
+.netlify/
