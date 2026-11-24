@@ -4,11 +4,12 @@ const APP_CONFIG = window.WARKOP_CONFIG || {};
 const DEMO_MODE = APP_CONFIG.DEMO === true;
 const STORAGE_KEY = DEMO_MODE ? 'warkop-demo-v2' : 'warkop-pos-v2';
 const LEGACY_STORAGE_KEY = DEMO_MODE ? null : 'warkop-pos-v1';
-const APP_VERSION = '1.8.4';
+const APP_VERSION = '1.9.0';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-const EXPENSE_CATEGORIES = ['Bahan Baku', 'Listrik', 'Gas', 'Gaji', 'Sewa', 'Lainnya'];
+const PURCHASE = 'Pembelian bahan resep';
+const EXPENSE_CATEGORIES = [PURCHASE, 'Bahan Baku', 'Listrik', 'Gas', 'Gaji', 'Sewa', 'Lainnya'];
 const MAX_MONEY = 999999999999;
 const MAX_REJECTED = 50;
 const PHOTO_BUCKET = 'product-images';
@@ -369,6 +370,7 @@ const normalizeProduct = (item, fallbackNow) => {
     name,
     price,
     cost,
+    ...(Array.isArray(item.recipe) ? { recipe: item.recipe } : {}),
     image_url: imageUrl,
     category,
     active: item.active !== false,
@@ -395,6 +397,7 @@ const normalizeTransaction = (item, fallbackNow) => {
       product_id: productId || uid(),
       name,
       price: Number.isFinite(rawPrice) && rawPrice >= 0 ? Math.round(rawPrice) : 0,
+      ...(Array.isArray(row.ingredients) ? { ingredients: row.ingredients } : {}),
       cost: Number.isFinite(rawItemCost) && rawItemCost >= 0 ? Math.round(rawItemCost) : 0,
       qty
     });
@@ -430,6 +433,7 @@ const normalizeExpense = (item, fallbackNow) => {
     date: item.date,
     category: String(item.category ?? '').trim() || 'Lainnya',
     amount,
+    ...(item.purchase ? { purchase: item.purchase } : {}),
     note: String(item.note ?? '').trim(),
     updated_at: validIso(item.updated_at) || fallbackNow,
     deleted_at: validIso(item.deleted_at)
@@ -587,7 +591,8 @@ const migrateLegacyDB = (raw) => {
       date: item.date,
       category: String(item.category ?? '').trim() || 'Lainnya',
       amount,
-      note: String(item.note ?? '').trim(),
+      ...(item.purchase ? { purchase: item.purchase } : {}),
+    note: String(item.note ?? '').trim(),
       updated_at: timestamp,
       deleted_at: null
     });
@@ -877,7 +882,7 @@ const getLogData = () => {
     .filter((item) => item.day >= state.logFrom && item.day <= state.logTo)
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   const expenses = db.expenses
-    .filter((item) => !item.deleted_at && item.date >= state.logFrom && item.date <= state.logTo)
+    .filter((item) => !item.purchase && !item.deleted_at && item.date >= state.logFrom && item.date <= state.logTo)
     .map((item, index) => ({ ...item, _index: index }))
     .sort((a, b) => b.date.localeCompare(a.date) || b._index - a._index);
   return {
@@ -961,7 +966,7 @@ const dateField = (id, value, extra = '') => `
   </div>
 `;
 
-const FORM_KEEP_IDS = ['e-date', 'e-category', 'e-amount', 'e-note'];
+const FORM_KEEP_IDS = ['e-date', 'e-category', 'e-amount', 'e-note', 'ingredient-name', 'ingredient-qty', 'ingredient-unit'];
 
 const render = (options = {}) => {
   const keptForm = options.keepForm && state.tab === 'pengeluaran'
@@ -1000,6 +1005,8 @@ const render = (options = {}) => {
     el.value = value;
     if (focused) el.focus({ preventScroll: true });
   });
+  const purchaseFields = document.getElementById('purchase-fields');
+  if (purchaseFields) purchaseFields.hidden = document.getElementById('e-category').value !== PURCHASE;
   renderCartBar();
   renderSyncStatus();
 };
@@ -1112,17 +1119,18 @@ const produkView = () => {
     `;
   }
 
+  const prices = ingredientPrices();
   const groups = categoryNames.map((category) => {
     const items = products.filter((product) => product.category === category);
-    const rows = items.map((product) => `
+    const rows = items.map(product => ({ ...product, cost: currentCost(product, prices) })).map((product) => `
       <button class="product-row ${product.active ? '' : 'is-inactive'}" type="button" data-act="edit-product" data-id="${esc(product.id)}" aria-label="Edit ${esc(product.name)}">
         <span class="product-row-thumb"><img src="${esc(productPhoto(product))}" alt="" loading="lazy" decoding="async"></span>
         <span class="product-row-main">
           <span class="product-row-name">${esc(product.name)}</span>
           <span class="product-row-meta">
             ${product.active ? '' : '<span class="badge-muted">Nonaktif</span>'}
-            <span>Modal ${rp(product.cost || 0)}</span>
-            <span class="${product.price - (product.cost || 0) >= 0 ? 'margin-pos' : 'margin-neg'}">Untung ${signedRp(product.price - (product.cost || 0))}</span>
+            <span>Modal ${product.cost === null ? 'belum tersedia' : rp(product.cost)}</span>
+            <span ${product.cost === null ? 'hidden' : ''} class="${product.price - (product.cost || 0) >= 0 ? 'margin-pos' : 'margin-neg'}">Untung ${signedRp(product.price - (product.cost || 0))}</span>
           </span>
         </span>
         <span class="product-row-price">${rp(product.price)}</span>
@@ -1145,6 +1153,66 @@ const produkView = () => {
   `;
 };
 
+// Harga acuan adalah rata-rata tertimbang seluruh pembelian sampai hari ini.
+const baseUnits = { kg: ['g', 1000], g: ['g', 1], l: ['ml', 1000], ml: ['ml', 1], pcs: ['pcs', 1] };
+
+const ingredientPrices = () => {
+  const prices = new Map();
+  const today = dkey();
+  for (const expense of db.expenses) {
+    const purchase = expense.purchase;
+    if (!purchase || expense.deleted_at || expense.date > today) continue;
+    const key = purchase.key;
+    const entry = prices.get(key) || { ...purchase, quantity: 0, amount: 0 };
+    entry.quantity += purchase.quantity;
+    entry.amount += expense.amount;
+    prices.set(key, entry);
+  }
+  return prices;
+};
+
+const recipeCost = (recipe, prices) => {
+  let total = 0;
+  for (const line of recipe) {
+    const entry = prices.get(line.key);
+    if (!entry || !entry.quantity) return null;
+    total += line.quantity * entry.amount / entry.quantity;
+  }
+  return Number.isFinite(total) && total <= MAX_MONEY ? Math.round(total) : null;
+};
+
+const currentCost = (product, prices = ingredientPrices()) => product.recipe?.length
+  ? recipeCost(product.recipe, prices) : product.cost || 0;
+
+const recipeFields = (product) => {
+  const prices = ingredientPrices();
+  const lines = new Map((product?.recipe || []).map(line => [line.key, line]));
+  const entries = new Map([...lines, ...prices]);
+  return `<details class="field" ${lines.size ? 'open' : ''}><summary>Resep dapur per porsi</summary>
+    <p class="field-hint">Catat pembelian di Pengeluaran → Pembelian bahan resep. Isi takaran bahan yang dipakai. HPP mengikuti rata-rata harga pembelian sampai hari ini.</p>
+    ${Array.from(entries, ([key, entry]) => `<label class="field"><span>${esc(entry.name)} (${esc(entry.unit)}/porsi)</span>
+    <input type="number" class="input recipe-qty" min="0" step="any" placeholder="0" data-key="${esc(key)}" data-name="${esc(entry.name)}" data-unit="${esc(entry.unit)}" value="${esc(lines.get(key)?.quantity || '')}">
+    <small class="field-hint recipe-line-cost"></small></label>`).join('')}</details>`;
+};
+
+const readRecipe = () => Array.from(document.querySelectorAll('.recipe-qty'))
+  .filter(input => input.valueAsNumber > 0)
+  .map(input => ({ key: input.dataset.key, name: input.dataset.name, unit: input.dataset.unit, quantity: input.valueAsNumber }));
+
+const previewRecipe = () => {
+  const cost = document.getElementById('p-cost');
+  const recipe = readRecipe();
+  const prices = ingredientPrices();
+  for (const input of document.querySelectorAll('.recipe-qty')) {
+    const entry = prices.get(input.dataset.key);
+    input.nextElementSibling.textContent = entry ? rp((input.valueAsNumber || 0) * entry.amount / entry.quantity) : 'Harga pembelian belum tersedia';
+  }
+  if (!cost.readOnly) cost.dataset.manual = cost.value;
+  cost.readOnly = recipe.length > 0;
+  cost.value = recipe.length ? formatMoneyField(recipeCost(recipe, prices) ?? 0) : cost.dataset.manual || '';
+  updateMarginHint();
+};
+
 const pengeluaranView = () => {
   const currentMonth = dkey().slice(0, 7);
   const expenses = db.expenses
@@ -1157,6 +1225,7 @@ const pengeluaranView = () => {
     <div class="expense-row">
       <div class="expense-main">
         <span class="expense-category">${esc(item.category)}</span>
+        ${item.purchase ? `<span>${esc(item.purchase.name)} · ${esc(item.purchase.quantity)} ${esc(item.purchase.unit)}</span>` : ''}
         <span class="expense-date">${formatShortDate(item.date)}</span>
         <span class="expense-note">${item.note ? esc(item.note) : 'Tanpa catatan'}</span>
       </div>
@@ -1183,10 +1252,17 @@ const pengeluaranView = () => {
             <div class="field">
               <label class="field-label" for="e-category">Kategori</label>
               <select class="select" id="e-category">
-                ${EXPENSE_CATEGORIES.map((category) => `<option value="${esc(category)}">${esc(category)}</option>`).join('')}
+                ${EXPENSE_CATEGORIES.map((category) => `<option value="${esc(category)}">${category === 'Bahan Baku' ? 'Bahan Baku (biaya langsung tanpa resep)' : esc(category)}</option>`).join('')}
               </select>
             </div>
             <div class="field">
+              <div id="purchase-fields">
+                <label>Nama bahan<input class="input" id="ingredient-name" list="ingredient-list" maxlength="100" placeholder="Contoh: Kopi bubuk"></label>
+                <datalist id="ingredient-list">${Array.from(ingredientPrices().values(), x => `<option value="${esc(x.name)}"></option>`).join('')}</datalist>
+                <label>Jumlah dibeli<input class="input" type="number" min="0" step="any" id="ingredient-qty"></label>
+                <label>Satuan<select class="select" id="ingredient-unit">${Object.keys(baseUnits).map(u => `<option>${u}</option>`).join('')}</select></label>
+                <p class="field-hint">Isi nominal dengan harga total pembelian. Biaya masuk laba rugi melalui HPP menu saat terjual.</p>
+              </div>
               <label class="field-label" for="e-amount">Nominal</label>
               <div class="input-money">
                 <span>Rp</span>
@@ -1274,6 +1350,10 @@ const logbookView = () => {
             <span class="pay-badge ${trx.pay}">${trx.pay === 'tunai' ? 'TUNAI' : 'QRIS'}</span>
           </div>
           <p class="trx-items">${trx.items.map((item) => `${esc(item.name)} x${item.qty}`).join(', ')}</p>
+          ${trx.items.some(item => item.ingredients?.length) ? `<details class="field-hint"><summary>Rincian HPP resep</summary>
+            ${trx.items.filter(item => item.ingredients?.length).map(item => `<p><strong>${esc(item.name)} · ${rp(item.cost)} per porsi</strong><br>
+              ${item.ingredients.map(line => `${esc(line.name)} · ${esc(line.quantity)} ${esc(line.unit)} · ${rp(line.quantity * line.unitCost)}`).join('<br>')}</p>`).join('')}</details>` : ''}
+
         </div>
         <strong class="trx-total">${rp(trx.total)}</strong>
       </div>
@@ -1517,6 +1597,21 @@ const completeSale = (pay, receivedAmount) => {
     return;
   }
 
+  const prices = ingredientPrices();
+  for (const item of state.cart) {
+    const product = db.products.find(row => row.id === item.id);
+    if (!product) return;
+    const cost = currentCost(product, prices);
+    if (cost === null) {
+      toast(`Harga bahan untuk ${product.name} belum tersedia.`, 'error');
+      return;
+    }
+    item.cost = cost;
+    item.ingredients = (product.recipe || []).map(line => {
+      const entry = prices.get(line.key);
+      return { ...line, unitCost: entry.amount / entry.quantity };
+    });
+  }
   state.saving = true;
   const actionButton = document.querySelector('[data-act="save-cash"], [data-act="save-qris"]');
   if (actionButton instanceof HTMLButtonElement) {
@@ -1529,6 +1624,7 @@ const completeSale = (pay, receivedAmount) => {
     name: item.name,
     price: item.price,
     cost: item.cost || 0,
+    ...(item.ingredients?.length ? { ingredients: item.ingredients } : {}),
     qty: item.qty
   }));
   const total = sum(items.map((item) => item.price * item.qty));
@@ -1659,8 +1755,9 @@ const openProductModal = (id = '') => {
             <input class="input" type="text" id="p-price" inputmode="numeric" value="${product ? formatMoneyField(product.price) : ''}" placeholder="0" data-money-input autocomplete="off">
           </div>
         </div>
+        ${recipeFields(product)}
         <div class="field">
-          <label class="field-label" for="p-cost">Harga modal</label>
+          <label class="field-label" for="p-cost">HPP per porsi</label>
           <div class="input-money">
             <span>Rp</span>
             <input class="input" type="text" id="p-cost" inputmode="numeric" value="${product ? formatMoneyField(product.cost || 0) : ''}" placeholder="0" data-money-input autocomplete="off">
@@ -1692,7 +1789,7 @@ const openProductModal = (id = '') => {
     </div>
   `;
   openModal(content, { labelledBy: 'product-title', focus: '#p-name' });
-  updateMarginHint();
+  previewRecipe();
 };
 
 const updateMarginHint = () => {
@@ -1782,6 +1879,15 @@ const saveProduct = async () => {
     return;
   }
   const cost = parseMoney(costInput.value) ?? 0;
+  const recipe = readRecipe();
+  if (Array.from(form.querySelectorAll('.recipe-qty')).some(input => !input.validity.valid)) {
+    toast('Takaran resep harus berupa angka positif atau nol.', 'error');
+    return;
+  }
+  if (recipe.length && recipeCost(recipe, ingredientPrices()) === null) {
+    toast('Ada bahan tanpa harga pembelian. Periksa resep.', 'error');
+    return;
+  }
   const category = categoryInput.value.trim() || 'Umum';
   const active = activeInput.checked;
   let message = 'Produk berhasil ditambahkan.';
@@ -1827,6 +1933,7 @@ const saveProduct = async () => {
       name,
       price,
       cost,
+      ...(recipe.length || db.products[index].recipe ? { recipe } : {}),
       category,
       active,
       ...(imageUrl !== undefined ? { image_url: imageUrl } : {}),
@@ -1844,6 +1951,7 @@ const saveProduct = async () => {
       name,
       price,
       cost,
+      ...(recipe.length ? { recipe } : {}),
       image_url: imageUrl ?? null,
       category,
       active,
@@ -1922,6 +2030,16 @@ const saveExpense = () => {
     deleted_at: null
   };
 
+  if (category === PURCHASE) {
+    const name = document.getElementById('ingredient-name').value.trim().replace(/\s+/g, ' ');
+    const quantity = document.getElementById('ingredient-qty').valueAsNumber;
+    const [unit, factor] = baseUnits[document.getElementById('ingredient-unit').value];
+    if (!name || !Number.isFinite(quantity * factor) || quantity <= 0) {
+      toast('Isi nama bahan dan jumlah pembelian lebih dari nol.', 'error');
+      return;
+    }
+    expense.purchase = { name, unit, quantity: quantity * factor, key: name.toLocaleLowerCase('id-ID') + '|' + unit };
+  }
   db.expenses.push(expense);
   const saved = enqueueChange('expenses', expenseToRow(expense));
   render();
@@ -1966,6 +2084,7 @@ const productToRow = (product) => ({
   name: product.name,
   price: product.price,
   cost: product.cost || 0,
+  ...(product.recipe ? { recipe: product.recipe } : {}),
   image_url: product.image_url || null,
   category: product.category,
   active: product.active,
@@ -1980,6 +2099,7 @@ const transactionToRow = (trx) => {
     name: item.name,
     price: item.price,
     cost: item.cost || 0,
+    ...(item.ingredients?.length ? { ingredients: item.ingredients } : {}),
     qty: item.qty
   }));
   return {
@@ -2000,6 +2120,7 @@ const expenseToRow = (expense) => ({
   date: expense.date,
   category: expense.category,
   amount: expense.amount,
+  ...(expense.purchase ? { purchase: expense.purchase } : {}),
   note: expense.note || '',
   updated_at: expense.updated_at,
   deleted_at: expense.deleted_at || null
@@ -2486,6 +2607,7 @@ const isPermanentError = (error) => {
   if (!error || error.isAuthExpired) return false;
   const code = String(error.code || '');
   if (code === '42501') return false;
+  if (code === 'PGRST204') return false;
   if (/^(22|23|42)/.test(code)) return true;
   return Number(error.status) === 400 || Number(error.status) === 422;
 };
@@ -3051,6 +3173,14 @@ const exportXLSX = () => {
     expenseSheet['!cols'] = [{ wch: 13 }, { wch: 16 }, { wch: 38 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(workbook, expenseSheet, 'Pengeluaran');
 
+    const purchases = db.expenses.filter(row => row.purchase && !row.deleted_at
+      && row.date >= state.logFrom && row.date <= state.logTo);
+    if (purchases.length) {
+      const rows = [['Tanggal', 'Bahan', 'Jumlah', 'Satuan', 'Harga pembelian', 'Catatan'],
+        ...purchases.map(row => [row.date, row.purchase.name, row.purchase.quantity, row.purchase.unit, row.amount, row.note])];
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), 'Pembelian Bahan');
+    }
+
     XLSX.writeFile(workbook, `logbook_${state.logFrom}_${state.logTo}.xlsx`, { compression: true });
     toast('Berkas Excel sedang diunduh.');
   } catch (error) {
@@ -3380,12 +3510,14 @@ document.addEventListener('input', (event) => {
     const display = document.querySelector(`[data-date-for="${target.id}"]`);
     if (display) display.textContent = dateText(target.value);
   }
+  if (target.matches('.recipe-qty')) previewRecipe();
   if (target.id === 'cash-received') updateCashState();
   if (target.id === 'p-price' || target.id === 'p-cost') updateMarginHint();
 });
 
 document.addEventListener('change', (event) => {
   const target = event.target;
+  if (target.id === 'e-category') document.getElementById('purchase-fields').hidden = target.value !== PURCHASE;
   if (target instanceof HTMLInputElement && target.matches('[data-log-date]')) {
     const key = target.dataset.logDate;
     let from = state.logFrom;

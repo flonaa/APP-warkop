@@ -1,4 +1,4 @@
-// Tes keuangan Warkop HCR (86 pemeriksaan: kasir, modal, laba, rentang tanggal, ekspor, sinkron tiruan).
+// Tes keuangan Warkop HCR (92 pemeriksaan: kasir, modal, laba, rentang tanggal, ekspor, sinkron tiruan).
 // Cara pakai: buka app dalam mode lokal (config.js kosong) lalu di console browser:
 //   (0,eval)(<isi berkas ini>); await window.__runFinanceTests()
 // Hasil: { total, passed, failed: [] }. Data asli di perangkat dikembalikan setelah tes.
@@ -322,6 +322,41 @@ window.__runFinanceTests = async () => {
   await flushOutbox();
   check('baris ditolak dipindah ke daftar ditolak dan antrean lanjut', [db.outbox.length, db.rejected.length], [0, 1]);
   mock.failIds.clear();
+
+  // Resep bebas, biaya pembelian dan HPP historis.
+  syncState.client = null;
+  syncState.session = null;
+  db = createEmptyDB();
+  const buy = (name, quantity, unit, amount) => {
+    state.tab = 'pengeluaran'; render();
+    document.getElementById('e-category').value = PURCHASE;
+    document.getElementById('ingredient-name').value = name;
+    document.getElementById('ingredient-qty').value = quantity;
+    document.getElementById('ingredient-unit').value = unit;
+    document.getElementById('e-amount').value = amount;
+    saveExpense();
+  };
+  buy('Kopi', 1, 'kg', 100000);
+  buy('Gula', 1, 'kg', 50000);
+  buy('Creamer', 1, 'kg', 30000);
+  openProductModal();
+  document.getElementById('p-name').value = 'Kopi resep';
+  document.getElementById('p-price').value = '10000';
+  const amounts = { Kopi: 10, Gula: 3, Creamer: 2 };
+  for (const input of document.querySelectorAll('.recipe-qty')) {
+    input.value = amounts[input.dataset.name];
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  check('preview HPP resep tiga bahan', parseMoney(document.getElementById('p-cost').value), 1210);
+  await saveProduct();
+  const menu = db.products[0];
+  addToCart(menu.id); completeSale('qris', 10000);
+  check('laba resep bebas biaya ganda', getLogData().summary.laba, 8790);
+  buy('kopi', 500, 'g', 75000);
+  check('perubahan rata-rata tertimbang', currentCost(menu), 1377);
+  check('rincian HPP transaksi tetap', normalizeDB(db).trx[0].items[0].ingredients.map(x => x.quantity * x.unitCost), [1000,150,60]);
+  check('HPP transaksi lama tetap', getLogData().summary.modal, 1210);
+  check('resep dan pembelian ikut sinkron', [productToRow(menu).recipe.length, expenseToRow(db.expenses[0]).purchase.quantity], [3,1000]);
 
   // ---------- bersihkan ----------
   syncState.client = savedSync.client; syncState.session = savedSync.session; syncState.user = savedSync.user; syncState.online = savedSync.online;

@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_VERSION = '1.8.5';
+const CACHE_VERSION = '1.9.0';
 const SCOPE_PATH = new URL(self.registration.scope).pathname;
 const IS_DEMO = SCOPE_PATH.endsWith('/demo/');
 const CACHE_PREFIX = IS_DEMO ? 'warkop-demo-' : 'warkop-pos-';

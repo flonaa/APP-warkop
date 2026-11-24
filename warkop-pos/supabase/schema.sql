@@ -192,3 +192,7 @@ using (true);
 
 -- Fungsi lama (versi sebelumnya) sudah tidak dipakai.
 drop function if exists public.set_updated_at();
+
+-- Resep per porsi dan rincian pembelian dalam satuan dasar.
+alter table public.products add column if not exists recipe jsonb;
+alter table public.expenses add column if not exists purchase jsonb;

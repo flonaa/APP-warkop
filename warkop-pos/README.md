@@ -257,3 +257,18 @@ File hasil akan ditulis ke `icons/icon-192.png` dan `icons/icon-512.png`.
 - Tema terang. Perbaikan kolom tanggal di Safari iOS.
 - Jalankan ulang `supabase/schema.sql` (atau migrasi `cost` dan `image_url`) pada database baru.
 
+
+## Resep dapur dan HPP per porsi (1.9.0)
+
+Di Pengeluaran, pilih **Pembelian bahan resep**, isi nama bahan, jumlah yang dibeli, satuan dan harga total. Gunakan nama yang sama untuk pembelian berikutnya. Aplikasi mengonversi kg ke g dan liter ke ml. Bahan satuan seperti telur atau kemasan memakai pcs.
+
+Di Produk, buka menu lalu isi **Resep dapur per porsi**. Gunakan takaran untuk satu porsi siap jual, termasuk kemasan bila diperlukan. Takaran kosong atau nol mengeluarkan bahan dari resep. Menu tanpa resep memakai HPP manual.
+
+Harga satuan dihitung dari total rupiah pembelian dibagi total jumlah bahan sejenis sampai hari penjualan. Takaran dikalikan harga satuan, dijumlahkan, lalu dibulatkan ke rupiah per porsi. Logbook menyimpan rincian harga saat transaksi. Pembelian resep tercatat sebagai uang keluar dan baru membebani laba melalui HPP penjualan. Catatan Bahan Baku lama tetap dihitung sebagai biaya langsung.
+
+**Database pemilik.** Terapkan dua perintah berikut di SQL Editor Supabase sebelum sinkronisasi resep pertama. Skema instalasi baru juga memuat kedua kolom ini.
+
+```sql
+alter table public.products add column if not exists recipe jsonb;
+alter table public.expenses add column if not exists purchase jsonb;
+```
