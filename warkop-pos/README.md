@@ -129,6 +129,16 @@ Tap status sinkron di bawah topbar untuk memicu sinkronisasi manual. Detail stat
 
 ## Menjalankan Secara Lokal
 
+### Shortcut Desktop Windows
+
+1. Pasang Python 3 dan pastikan perintah `python --version` berjalan.
+2. Klik dua kali `Buat Shortcut Warkop POS.bat` di folder utama repo.
+3. Buka **Warkop POS** dari Desktop. Server lokal berjalan dan aplikasi terbuka di browser bawaan pada `http://localhost:8080/`.
+4. Tutup jendela server untuk menghentikannya.
+
+File `Jalankan Warkop POS.bat` juga bisa dibuka langsung. Jika folder repo dipindah, jalankan kembali pembuat shortcut agar targetnya diperbarui.
+
+
 Service worker membutuhkan HTTP atau HTTPS. Membuka `index.html` langsung lewat `file://` tidak akan mengaktifkan mode offline.
 
 Dari folder `warkop-pos`, jalankan salah satu perintah berikut:
