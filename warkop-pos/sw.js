@@ -1,8 +1,11 @@
 'use strict';
 
-const CACHE_VERSION = '1.8.4';
-const PRECACHE_NAME = `warkop-pos-precache-${CACHE_VERSION}`;
-const RUNTIME_NAME = `warkop-pos-runtime-${CACHE_VERSION}`;
+const CACHE_VERSION = '1.8.5';
+const SCOPE_PATH = new URL(self.registration.scope).pathname;
+const IS_DEMO = SCOPE_PATH.endsWith('/demo/');
+const CACHE_PREFIX = IS_DEMO ? 'warkop-demo-' : 'warkop-pos-';
+const PRECACHE_NAME = `${CACHE_PREFIX}precache-${CACHE_VERSION}`;
+const RUNTIME_NAME = `${CACHE_PREFIX}runtime-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
   './',
@@ -63,7 +66,7 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then((keys) => Promise.all(
         keys
-          .filter((key) => key.startsWith('warkop-pos-') && key !== PRECACHE_NAME && key !== RUNTIME_NAME)
+          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== PRECACHE_NAME && key !== RUNTIME_NAME)
           .map((key) => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -109,6 +112,8 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (!/^https?:$/.test(url.protocol)) return;
+
+  if (!IS_DEMO && url.origin === self.location.origin && url.pathname.startsWith(`${SCOPE_PATH}demo/`)) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

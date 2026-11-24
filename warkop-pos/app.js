@@ -1,7 +1,9 @@
 'use strict';
 
-const STORAGE_KEY = 'warkop-pos-v2';
-const LEGACY_STORAGE_KEY = 'warkop-pos-v1';
+const APP_CONFIG = window.WARKOP_CONFIG || {};
+const DEMO_MODE = APP_CONFIG.DEMO === true;
+const STORAGE_KEY = DEMO_MODE ? 'warkop-demo-v2' : 'warkop-pos-v2';
+const LEGACY_STORAGE_KEY = DEMO_MODE ? null : 'warkop-pos-v1';
 const APP_VERSION = '1.8.4';
 const SYNC_RETRY_DELAYS = [5000, 15000, 60000];
 const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -12,7 +14,6 @@ const MAX_REJECTED = 50;
 const PHOTO_BUCKET = 'product-images';
 const PHOTO_SIZE = 640;
 
-const APP_CONFIG = window.WARKOP_CONFIG || {};
 const SUPABASE_URL = String(APP_CONFIG.SUPABASE_URL || '').trim().replace(/\/+$/, '');
 const SUPABASE_ANON_KEY = String(APP_CONFIG.SUPABASE_ANON_KEY || '').trim();
 
@@ -30,7 +31,7 @@ const jwtRole = (token) => {
 };
 
 const supabaseConfigIssue = (() => {
-  if (!SUPABASE_URL && !SUPABASE_ANON_KEY) return '';
+  if (DEMO_MODE || (!SUPABASE_URL && !SUPABASE_ANON_KEY)) return '';
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return 'SUPABASE_URL dan SUPABASE_ANON_KEY harus diisi keduanya.';
   if (!/^https?:\/\//i.test(SUPABASE_URL)) return 'SUPABASE_URL harus berupa URL http atau https.';
   if (SUPABASE_ANON_KEY.startsWith('sbp_')
@@ -41,7 +42,7 @@ const supabaseConfigIssue = (() => {
   return '';
 })();
 
-const SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && !supabaseConfigIssue);
+const SUPABASE_CONFIGURED = Boolean(!DEMO_MODE && SUPABASE_URL && SUPABASE_ANON_KEY && !supabaseConfigIssue);
 
 const TAB_META = {
   kasir: {
@@ -650,7 +651,7 @@ const loadInitialData = () => {
 
   let legacyRaw = null;
   try {
-    legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (LEGACY_STORAGE_KEY) legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
   } catch (error) {
     legacyRaw = null;
   }
@@ -2019,6 +2020,13 @@ const enqueueChange = (table, payload) => {
 };
 
 const getSyncStatus = () => {
+  if (DEMO_MODE) {
+    return {
+      kind: 'local',
+      text: 'Demo publik',
+      hint: 'Data contoh. Perubahan tersimpan di browser ini.'
+    };
+  }
   const pendingCount = db.outbox.length;
   if (supabaseConfigIssue) {
     return {

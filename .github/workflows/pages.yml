@@ -24,8 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Siapkan demo publik dengan data contoh
+        run: |
+          mkdir -p pages/demo
+          cp -a warkop-pos/. pages/
+          cp -a warkop-pos/. pages/demo/
+          printf '%s\n' 'window.WARKOP_CONFIG = { DEMO: true };' > pages/demo/config.js
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: warkop-pos
+          path: pages
       - id: deployment
         uses: actions/deploy-pages@v4
