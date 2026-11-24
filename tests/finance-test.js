@@ -1,4 +1,4 @@
-// Tes keuangan Warkop HCR (92 pemeriksaan: kasir, modal, laba, rentang tanggal, ekspor, sinkron tiruan).
+// Tes keuangan Warkop HCR (97 pemeriksaan: kasir, modal, laba, rentang tanggal, ekspor, sinkron tiruan).
 // Cara pakai: buka app dalam mode lokal (config.js kosong) lalu di console browser:
 //   (0,eval)(<isi berkas ini>); await window.__runFinanceTests()
 // Hasil: { total, passed, failed: [] }. Data asli di perangkat dikembalikan setelah tes.
@@ -357,6 +357,19 @@ window.__runFinanceTests = async () => {
   check('rincian HPP transaksi tetap', normalizeDB(db).trx[0].items[0].ingredients.map(x => x.quantity * x.unitCost), [1000,150,60]);
   check('HPP transaksi lama tetap', getLogData().summary.modal, 1210);
   check('resep dan pembelian ikut sinkron', [productToRow(menu).recipe.length, expenseToRow(db.expenses[0]).purchase.quantity], [3,1000]);
+
+  switchTab('absen');
+  const form = document.getElementById('employee-form');
+  form.elements.employee.value = 'Ayu';
+  form.requestSubmit();
+  check('tambah karyawan', db.employees.map(e => e.name), ['Ayu']);
+  document.querySelector('[data-clock="in"]').click(); acceptConfirm();
+  check('mulai shift', [db.shifts.length, db.shifts[0].end], [1, null]);
+  confirmAttendance(db.employees[0].id, 'in'); acceptConfirm();
+  check('absen masuk ganda dicegah', db.shifts.length, 1);
+  document.querySelector('[data-clock="out"]').click(); acceptConfirm();
+  check('absen pulang tersimpan', !!db.shifts[0].end, true);
+  check('absensi ikut cadangan', normalizeDB(JSON.parse(JSON.stringify(db))).shifts, db.shifts);
 
   // ---------- bersihkan ----------
   syncState.client = savedSync.client; syncState.session = savedSync.session; syncState.user = savedSync.user; syncState.online = savedSync.online;

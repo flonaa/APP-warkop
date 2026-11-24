@@ -46,6 +46,7 @@ const supabaseConfigIssue = (() => {
 const SUPABASE_CONFIGURED = Boolean(!DEMO_MODE && SUPABASE_URL && SUPABASE_ANON_KEY && !supabaseConfigIssue);
 
 const TAB_META = {
+  absen: { title: 'Absen', subtitle: 'Kehadiran karyawan di PC kasir.' },
   kasir: {
     title: 'Kasir',
     subtitle: 'Pilih menu, lalu bayar dalam sekali sentuh.'
@@ -335,6 +336,8 @@ const createEmptyDB = () => ({
   products: [],
   trx: [],
   expenses: [],
+  employees: [],
+  shifts: [],
   outbox: [],
   rejected: [],
   lastSyncAt: null,
@@ -345,6 +348,8 @@ const createSeedDB = () => ({
   products: createSeedProducts(),
   trx: [],
   expenses: [],
+  employees: [],
+  shifts: [],
   outbox: [],
   rejected: [],
   lastSyncAt: null,
@@ -501,6 +506,8 @@ const normalizeDB = (raw) => {
     products,
     trx,
     expenses,
+    employees: (Array.isArray(raw.employees) ? raw.employees : []).filter(e => e && isUuid(e.id) && typeof e.name === 'string'),
+    shifts: (Array.isArray(raw.shifts) ? raw.shifts : []).filter(s => s && isUuid(s.employee) && validIso(s.start) && (!s.end || validIso(s.end))),
     outbox,
     rejected: Array.isArray(raw.rejected)
       ? raw.rejected.reduce((list, item) => {
@@ -997,7 +1004,7 @@ const render = (options = {}) => {
   } else if (state.tab === 'pengeluaran') {
     view.innerHTML = pengeluaranView();
   } else {
-    view.innerHTML = logbookView();
+    view.innerHTML = state.tab === 'absen' ? attendanceView() : logbookView();
   }
   keptForm.forEach(({ id, value, focused }) => {
     const el = document.getElementById(id);
@@ -1299,6 +1306,65 @@ const pengeluaranView = () => {
       ${expenses.length ? `<div class="expense-list">${rows}</div>` : emptyState('Belum ada pengeluaran', 'Pengeluaran yang dicatat bulan ini akan muncul di sini.')}
     </section>
   `;
+};
+
+let attendanceDate = '';
+const attendanceView = () => {
+  const day = attendanceDate || dkey();
+  const employees = db.employees || [];
+  const shifts = db.shifts || [];
+  const history = shifts.filter(s => dkey(new Date(s.start)) === day).slice().reverse();
+  return `<section class="section"><div class="card form-card"><h2>Karyawan</h2>
+    <form id="employee-form"><label class="field">Nama karyawan<input class="input" name="employee" required maxlength="80"></label>
+    <button class="btn btn-primary" type="submit">Tambah karyawan</button></form>
+    ${employees.map(e => {
+      const open = shifts.find(s => s.employee === e.id && !s.end);
+      return `<div class="expense-row"><div><strong>${esc(e.name)}</strong><p>${open ? 'Masuk ' + esc(formatDateTime(open.start)) : 'Di luar shift'}</p></div>
+      <button class="btn btn-ghost" type="button" data-act="attendance" data-id="${esc(e.id)}" data-clock="${open ? 'out' : 'in'}">${open ? 'Absen pulang' : 'Absen masuk'}</button></div>`;
+    }).join('')}</div></section>
+    <section class="section"><div class="card form-card"><h2>Riwayat per tanggal masuk</h2>
+    <label class="field">Tanggal<input class="input" id="attendance-date" type="date" value="${esc(day)}"></label>
+    ${history.map(s => `<div class="expense-row"><div><strong>${esc(employees.find(e => e.id === s.employee)?.name || 'Karyawan')}</strong>
+    <p>Masuk ${esc(formatDateTime(s.start))} · ${s.end ? 'Pulang ' + esc(formatDateTime(s.end)) : 'Belum pulang'}</p></div>
+    ${s.end ? Math.floor((Date.parse(s.end) - Date.parse(s.start)) / 60000) + ' menit' : ''}</div>`).join('') || '<p>Belum ada absen pada tanggal ini.</p>'}
+    <p class="field-hint">Absensi tersimpan di browser PC ini dan ikut dalam cadangan JSON.</p></div></section>`;
+};
+
+document.addEventListener('submit', event => {
+  if (event.target.id !== 'employee-form') return;
+  event.preventDefault();
+  const name = event.target.elements.employee.value.trim();
+  const employees = db.employees ||= [];
+  if (!name || employees.some(e => e.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    toast('Isi nama unik. Tambahkan nama belakang jika perlu.', 'error');
+    return;
+  }
+  employees.push({ id: uid(), name });
+  if (!persist()) { employees.pop(); return; }
+  render();
+});
+
+const confirmAttendance = (employeeId, clock) => {
+  const employee = db.employees?.find(e => e.id === employeeId);
+  if (!employee) return;
+  const entering = clock === 'in';
+  openConfirm({
+    title: entering ? 'Absen masuk?' : 'Absen pulang?',
+    message: `Catat waktu ${entering ? 'masuk' : 'pulang'} untuk ${employee.name} sekarang?`,
+    confirmLabel: 'Catat absen',
+    onConfirm: () => {
+      const shifts = db.shifts ||= [];
+      const open = shifts.find(s => s.employee === employeeId && !s.end);
+      if (entering === Boolean(open)) return;
+      const now = nowIso();
+      if (open && Date.parse(now) < Date.parse(open.start)) { toast('Periksa jam PC.', 'error'); return; }
+      if (entering) shifts.push({ employee: employeeId, start: now, end: null });
+      else open.end = now;
+      if (!persist()) { if (entering) shifts.pop(); else open.end = null; return; }
+      render();
+      toast('Absensi tersimpan.');
+    }
+  });
 };
 
 const logbookView = () => {
@@ -3348,6 +3414,9 @@ document.addEventListener('click', (event) => {
     case 'tab':
       switchTab(target.dataset.tab);
       break;
+    case 'attendance':
+      confirmAttendance(target.dataset.id, target.dataset.clock);
+      break;
     case 'category':
       state.category = target.dataset.category || 'Semua';
       render();
@@ -3517,6 +3586,7 @@ document.addEventListener('input', (event) => {
 
 document.addEventListener('change', (event) => {
   const target = event.target;
+  if (target.id === 'attendance-date') { attendanceDate = target.value; render(); }
   if (target.id === 'e-category') document.getElementById('purchase-fields').hidden = target.value !== PURCHASE;
   if (target instanceof HTMLInputElement && target.matches('[data-log-date]')) {
     const key = target.dataset.logDate;
